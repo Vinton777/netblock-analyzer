@@ -47,7 +47,7 @@ fi
 
 # Получаем директорию, где находится этот bash-скрипт
 SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
-PYTHON_SCRIPT="$SCRIPT_DIR/network_test.py"
+PYTHON_SCRIPT="$SCRIPT_DIR/netblock_analyzer.py"
 
 if [ ! -f "$PYTHON_SCRIPT" ]; then
     echo "Ошибка: Не найден файл $PYTHON_SCRIPT"

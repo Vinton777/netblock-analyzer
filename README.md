@@ -1,4 +1,4 @@
-# Network Test Tool
+# NetBlock Analyzer
 
 Утилита командной строки для массовой проверки доступности IP-адресов из заданных CIDR-подсетей с определением провайдера (ASN) через whois. Инструмент автоматически пингует несколько IP-адресов из подсети, чтобы найти хотя бы один активный, и собирает результаты в удобную таблицу с возможностью сохранения в CSV.
 
@@ -15,16 +15,16 @@
 ### Для Linux (Ubuntu, Debian, CentOS и др.)
 Вы можете установить или обновить скрипт глобально в систему, выполнив следующую команду:
 ```bash
-curl -sSL https://raw.githubusercontent.com/Vinton777/network-cidr-test-ip/master/install.sh | sudo bash
+curl -sSL https://raw.githubusercontent.com/Vinton777/netblock-analyzer/master/install.sh | sudo bash
 ```
 
 ### Для Termux (Android)
 В Termux (смартфоны, планшеты) выполните команду установки **без sudo**:
 ```bash
-curl -sSL https://raw.githubusercontent.com/Vinton777/network-cidr-test-ip/master/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/Vinton777/netblock-analyzer/master/install.sh | bash
 ```
 
-*(Либо вы можете клонировать репозиторий и запускать скрипт `./network_test.sh` локально)*
+*(Либо вы можете клонировать репозиторий и запускать скрипт `./netblock_analyzer.sh` локально)*
 
 ## Использование
 
@@ -46,7 +46,7 @@ curl -sSL https://raw.githubusercontent.com/Vinton777/network-cidr-test-ip/maste
 
 2. Откройте терминал в этой папке и запустите:
 ```bash
-network_test
+netblock_analyzer
 ```
 Инструмент задаст вопросы о количестве IP-адресов для пинга на каждую подсеть, установит тайм-аут, спросит **сколько потоков использовать** (по умолчанию `20`) и предложит сохранить результаты в `results.csv`.
 

@@ -4,18 +4,18 @@ set -e
 # Этап 1: Определение URL репозитория
 # Замените USERNAME и REPO_NAME на ваши данные после публикации на GitHub
 USERNAME="Vinton777"
-REPO_NAME="network-cidr-test-ip"
+REPO_NAME="netblock-analyzer"
 BRANCH="master"
 BASE_URL="https://raw.githubusercontent.com/$USERNAME/$REPO_NAME/$BRANCH"
 
 if [ -d "/data/data/com.termux" ]; then
     export PREFIX="/data/data/com.termux/files/usr"
-    INSTALL_DIR="$PREFIX/opt/network_test"
-    BIN_CMD="$PREFIX/bin/network_test"
+    INSTALL_DIR="$PREFIX/opt/netblock_analyzer"
+    BIN_CMD="$PREFIX/bin/netblock_analyzer"
     IS_TERMUX=1
 else
-    INSTALL_DIR="/opt/network_test"
-    BIN_CMD="/usr/local/bin/network_test"
+    INSTALL_DIR="/opt/netblock_analyzer"
+    BIN_CMD="/usr/local/bin/netblock_analyzer"
     IS_TERMUX=0
 
     if [ "$EUID" -ne 0 ] && [ "$(id -u)" -ne 0 ]; then
@@ -24,7 +24,7 @@ else
     fi
 fi
 
-echo "Установка инструмента Network Test..."
+echo "Установка NetBlock Analyzer..."
 
 # Проверка наличия curl
 if ! command -v curl >/dev/null 2>&1; then
@@ -45,16 +45,16 @@ echo "Создание директории $INSTALL_DIR..."
 mkdir -p "$INSTALL_DIR"
 
 echo "Загрузка файлов скрипта..."
-curl -sSL "$BASE_URL/network_test.sh" -o "$INSTALL_DIR/network_test.sh"
-curl -sSL "$BASE_URL/network_test.py" -o "$INSTALL_DIR/network_test.py"
+curl -sSL "$BASE_URL/netblock_analyzer.sh" -o "$INSTALL_DIR/netblock_analyzer.sh"
+curl -sSL "$BASE_URL/netblock_analyzer.py" -o "$INSTALL_DIR/netblock_analyzer.py"
 curl -sSL "$BASE_URL/cidr.txt" -o "$INSTALL_DIR/cidr.txt"
 curl -sSL "$BASE_URL/ip.txt" -o "$INSTALL_DIR/ip.txt"
 
-chmod +x "$INSTALL_DIR/network_test.sh"
+chmod +x "$INSTALL_DIR/netblock_analyzer.sh"
 
 echo "Создание символической ссылки..."
-ln -sf "$INSTALL_DIR/network_test.sh" "$BIN_CMD"
+ln -sf "$INSTALL_DIR/netblock_analyzer.sh" "$BIN_CMD"
 
 echo ""
 echo "Установка успешно завершена!"
-echo "Теперь вы можете запустить скрипт из любой директории командой: network_test"
+echo "Теперь вы можете запустить NetBlock Analyzer из любой директории командой: netblock_analyzer"
