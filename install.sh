@@ -37,6 +37,7 @@ mkdir -p "$INSTALL_DIR"
 echo "Загрузка файлов скрипта..."
 curl -sSL "$BASE_URL/network_test.sh" -o "$INSTALL_DIR/network_test.sh"
 curl -sSL "$BASE_URL/network_test.py" -o "$INSTALL_DIR/network_test.py"
+curl -sSL "$BASE_URL/cidr.txt" -o "$INSTALL_DIR/cidr.txt"
 
 chmod +x "$INSTALL_DIR/network_test.sh"
 
