@@ -136,12 +136,18 @@ def evaluate_cidr(cidr_str, ips, timeout):
 
 def main():
     work_dir = sys.argv[1] if len(sys.argv) > 1 else os.getcwd()
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    
     cidr_file = os.path.join(work_dir, "cidr.txt")
-    results_file = os.path.join(work_dir, "results.csv")
-
     if not os.path.exists(cidr_file):
-        print(f"Ошибка: Файл cidr.txt не найден в директории {work_dir}.")
-        sys.exit(1)
+        fallback_file = os.path.join(script_dir, "cidr.txt")
+        if os.path.exists(fallback_file):
+            cidr_file = fallback_file
+        else:
+            print(f"Ошибка: Файл cidr.txt не найден ни в текущей папке ({work_dir}), ни в системной ({script_dir}).")
+            sys.exit(1)
+            
+    results_file = os.path.join(work_dir, "results.csv")
         
     print("--- Настройки проверки сети ---")
     num_ips = get_int_input("Сколько IP проверять для каждого CIDR?", 5)
