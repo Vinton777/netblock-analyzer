@@ -3,9 +3,9 @@ set -e
 
 # Этап 1: Определение URL репозитория
 # Замените USERNAME и REPO_NAME на ваши данные после публикации на GitHub
-USERNAME="YOUR_GITHUB_USERNAME"
-REPO_NAME="YOUR_REPO_NAME"
-BRANCH="main"
+USERNAME="Vinton777"
+REPO_NAME="network-cidr-test-ip"
+BRANCH="master"
 BASE_URL="https://raw.githubusercontent.com/$USERNAME/$REPO_NAME/$BRANCH"
 
 INSTALL_DIR="/opt/network_test"

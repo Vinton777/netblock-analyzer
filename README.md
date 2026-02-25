@@ -14,9 +14,9 @@
 
 Вы можете установить или обновить скрипт глобально в систему выполнив следующую команду:
 ```bash
-curl -sSL https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/YOUR_REPO_NAME/main/install.sh | sudo bash
+curl -sSL https://raw.githubusercontent.com/Vinton777/network-cidr-test-ip/master/install.sh | sudo bash
 ```
-*(Не забудьте подставить своё имя пользователя и название репозитория вместо `YOUR_GITHUB_USERNAME`/`YOUR_REPO_NAME`)*
+*(Либо вы можете клонировать репозиторий и запускать скрипт `./network_test.sh` локально)*
 
 ## Использование
 Скрипт ожидает найти файл со списком подсетей `cidr.txt` в текущей директории.
