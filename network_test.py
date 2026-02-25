@@ -158,11 +158,18 @@ def evaluate_cidr(cidr_str, ips, timeout, check_asn):
         
     return cidr_str, asn, provider, is_reachable, "ok"
 
+VERSION = "1.0.0"
+
 def main():
     work_dir = sys.argv[1] if len(sys.argv) > 1 else os.getcwd()
     script_dir = os.path.dirname(os.path.abspath(__file__))
     
-    print("--- Режим работы ---")
+    print(f"==========================================")
+    print(f"Network CIDR & IP Test Utility v{VERSION}")
+    print(f"             by Vinton")
+    print(f"==========================================")
+    
+    print("\n--- Режим работы ---")
     while True:
         mode_val = input("Выберите режим:\n1 - Проверка CIDR (cidr.txt)\n2 - Проверка IP (ip.txt)\nВаш выбор [1]: ").strip()
         if not mode_val:
