@@ -31,7 +31,7 @@ curl -sSL https://raw.githubusercontent.com/Vinton777/netblock-analyzer/master/i
 1. **Свой список CIDR** (`cidr.txt`)
 2. **Свой список IP** (`ip.txt`)
 3. **UFO** (`cidr_ufo.txt`)
-4. **Selectel** (`cidr_selectel.txt`)
+4. **Selectel** (`cidr_selectel.txt`) *(осторожно, очень много CIDR!)*
 5. **Cloud.ru** (`cidr_cloudru.txt`)
 6. **Yandex** (`cidr_yandex.txt`)
 7. **VK** (`cidr_vk.txt`)
