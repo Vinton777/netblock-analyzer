@@ -54,5 +54,5 @@ if [ ! -f "$PYTHON_SCRIPT" ]; then
     exit 1
 fi
 
-# Запуск Python скрипта
-exec python3 "$PYTHON_SCRIPT"
+# Запуск Python скрипта в текущей директории пользователя
+exec python3 "$PYTHON_SCRIPT" "$PWD"

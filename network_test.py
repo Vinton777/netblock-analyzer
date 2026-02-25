@@ -135,22 +135,26 @@ def evaluate_cidr(cidr_str, ips, timeout):
     return cidr_str, asn, provider, is_reachable, "ok"
 
 def main():
-    if not os.path.exists("cidr.txt"):
-        print("Ошибка: Файл cidr.txt не найден в текущей директории.")
+    work_dir = sys.argv[1] if len(sys.argv) > 1 else os.getcwd()
+    cidr_file = os.path.join(work_dir, "cidr.txt")
+    results_file = os.path.join(work_dir, "results.csv")
+
+    if not os.path.exists(cidr_file):
+        print(f"Ошибка: Файл cidr.txt не найден в директории {work_dir}.")
         sys.exit(1)
         
     print("--- Настройки проверки сети ---")
     num_ips = get_int_input("Сколько IP проверять для каждого CIDR?", 5)
     timeout = get_int_input("Timeout для ping в секундах?", 2)
     max_threads = get_int_input("Сколько потоков использовать?", 20)
-    save_res = get_yes_no_input("Сохранять результаты в results.csv (y/n)?", "y")
+    save_res = get_yes_no_input(f"Сохранять результаты в {results_file} (y/n)?", "y")
     print("-------------------------------\n")
 
     results = []
     
     tasks = []
     try:
-        with open("cidr.txt", "r", encoding="utf-8") as f:
+        with open(cidr_file, "r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if not line or line.startswith('#'):
@@ -206,11 +210,11 @@ def main():
     # Сохранение результатов
     if save_res and results:
         try:
-            with open("results.csv", "w", newline='', encoding="utf-8") as cf:
+            with open(results_file, "w", newline='', encoding="utf-8") as cf:
                 writer = csv.writer(cf)
                 writer.writerow(["CIDR", "ASN", "PROVIDER", "PING"])
                 writer.writerows(results)
-            print(f"\n[+] Результаты успешно сохранены в results.csv")
+            print(f"\n[+] Результаты успешно сохранены в {results_file}")
         except Exception as e:
             print(f"\n[-] Ошибка при сохранении результатов: {e}")
 
