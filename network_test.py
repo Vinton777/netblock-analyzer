@@ -141,7 +141,7 @@ def get_ips_to_test(cidr_str, num_ips):
                 
     return ips
 
-def evaluate_cidr(cidr_str, ips, timeout):
+def evaluate_cidr(cidr_str, ips, timeout, check_asn):
     if ips is None:
         return cidr_str, "Invalid", "--", False, "error"
         
@@ -151,7 +151,11 @@ def evaluate_cidr(cidr_str, ips, timeout):
             is_reachable = True
             break
             
-    asn, provider = get_asn_info(ipaddress.IPv4Network(cidr_str, strict=False))
+    if check_asn:
+        asn, provider = get_asn_info(ipaddress.IPv4Network(cidr_str, strict=False))
+    else:
+        asn, provider = "--", "--"
+        
     return cidr_str, asn, provider, is_reachable, "ok"
 
 def main():
@@ -173,6 +177,7 @@ def main():
     num_ips = get_int_input("Сколько IP проверять для каждого CIDR?", 5)
     timeout = get_int_input("Timeout для ping в секундах?", 2)
     max_threads = get_int_input("Сколько потоков использовать?", 20)
+    check_asn = get_yes_no_input("Отображать ASN и провайдера? (y/n) (может не работать при блокировках)", "y")
     save_res = get_yes_no_input(f"Сохранять результаты в {results_file} (y/n)?", "y")
     print("-------------------------------\n")
 
@@ -199,7 +204,7 @@ def main():
             future_to_cidr = {}
             for cidr_str in tasks:
                 ips = get_ips_to_test(cidr_str, num_ips)
-                future = executor.submit(evaluate_cidr, cidr_str, ips, timeout)
+                future = executor.submit(evaluate_cidr, cidr_str, ips, timeout, check_asn)
                 future_to_cidr[future] = cidr_str
                 
             for future in concurrent.futures.as_completed(future_to_cidr):
