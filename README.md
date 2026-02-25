@@ -12,10 +12,18 @@
 
 ## Установка одним скриптом
 
-Вы можете установить или обновить скрипт глобально в систему выполнив следующую команду:
+### Для Linux (Ubuntu, Debian, CentOS и др.)
+Вы можете установить или обновить скрипт глобально в систему, выполнив следующую команду:
 ```bash
 curl -sSL https://raw.githubusercontent.com/Vinton777/network-cidr-test-ip/master/install.sh | sudo bash
 ```
+
+### Для Termux (Android)
+В Termux (смартфоны, планшеты) выполните команду установки **без sudo**:
+```bash
+curl -sSL https://raw.githubusercontent.com/Vinton777/network-cidr-test-ip/master/install.sh | bash
+```
+
 *(Либо вы можете клонировать репозиторий и запускать скрипт `./network_test.sh` локально)*
 
 ## Использование

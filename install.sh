@@ -8,12 +8,17 @@ REPO_NAME="network-cidr-test-ip"
 BRANCH="master"
 BASE_URL="https://raw.githubusercontent.com/$USERNAME/$REPO_NAME/$BRANCH"
 
-INSTALL_DIR="/opt/network_test"
-BIN_CMD="/usr/local/bin/network_test"
+if [ -n "$TERMUX_VERSION" ]; then
+    INSTALL_DIR="$PREFIX/opt/network_test"
+    BIN_CMD="$PREFIX/bin/network_test"
+else
+    INSTALL_DIR="/opt/network_test"
+    BIN_CMD="/usr/local/bin/network_test"
 
-if [ "$EUID" -ne 0 ]; then
-    echo "Пожалуйста, запустите установку от имени root (через sudo)"
-    exit 1
+    if [ "$EUID" -ne 0 ]; then
+        echo "Пожалуйста, запустите установку от имени root (через sudo)"
+        exit 1
+    fi
 fi
 
 echo "Установка инструмента Network Test..."
@@ -21,7 +26,9 @@ echo "Установка инструмента Network Test..."
 # Проверка наличия curl
 if ! command -v curl >/dev/null 2>&1; then
     echo "curl не найден. Попытка установки..."
-    if command -v apt >/dev/null 2>&1; then
+    if [ -n "$TERMUX_VERSION" ]; then
+        pkg update -y && pkg install -y curl
+    elif command -v apt >/dev/null 2>&1; then
         apt update && apt install -y curl
     elif command -v yum >/dev/null 2>&1; then
         yum install -y curl
