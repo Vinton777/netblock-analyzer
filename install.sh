@@ -58,3 +58,7 @@ ln -sf "$INSTALL_DIR/netblock_analyzer.sh" "$BIN_CMD"
 echo ""
 echo "Установка успешно завершена!"
 echo "Теперь вы можете запустить NetBlock Analyzer из любой директории командой: netblock_analyzer"
+
+echo "Открываем папку с установленными файлами ($INSTALL_DIR)..."
+cd "$INSTALL_DIR" || exit
+exec "${SHELL:-bash}" < /dev/tty
