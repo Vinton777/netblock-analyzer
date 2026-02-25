@@ -158,7 +158,7 @@ def evaluate_cidr(cidr_str, ips, timeout, check_asn):
         
     return cidr_str, asn, provider, is_reachable, "ok"
 
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 
 def main():
     work_dir = sys.argv[1] if len(sys.argv) > 1 else os.getcwd()
@@ -170,17 +170,29 @@ def main():
     print(f"==========================================")
     
     print("\n--- Режим работы ---")
+    options = {
+        '1': ("Свой список CIDR", 'cidr.txt', 1),
+        '2': ("Свой список IP", 'ip.txt', 2),
+        '3': ("UFO", 'cidr_ufo.txt', 1),
+        '4': ("Selectel", 'cidr_selectel.txt', 1),
+        '5': ("Cloud.ru", 'cidr_cloudru.txt', 1),
+        '6': ("Yandex", 'cidr_yandex.txt', 1),
+        '7': ("VK", 'cidr_vk.txt', 1),
+        '8': ("Reg.ru", 'cidr_regru.txt', 1)
+    }
     while True:
-        mode_val = input("Выберите режим:\n1 - Проверка CIDR (cidr.txt)\n2 - Проверка IP (ip.txt)\nВаш выбор [1]: ").strip()
+        print("Выберите списки для проверки:")
+        for k, v in options.items():
+            print(f"{k} - {v[0]} ({v[1]})")
+        mode_val = input("Ваш выбор [1]: ").strip()
         if not mode_val:
-            mode = 1
+            mode_val = '1'
+        if mode_val in options:
+            selected_option = options[mode_val]
+            filename = selected_option[1]
+            mode = selected_option[2]
             break
-        if mode_val in ('1', '2'):
-            mode = int(mode_val)
-            break
-        print("Пожалуйста, введите 1 или 2.")
-        
-    filename = "cidr.txt" if mode == 1 else "ip.txt"
+        print("Пожалуйста, введите число от 1 до 8.\n")
     
     target_file = os.path.join(work_dir, filename)
     if not os.path.exists(target_file):

@@ -49,6 +49,12 @@ curl -sSL "$BASE_URL/netblock_analyzer.sh" -o "$INSTALL_DIR/netblock_analyzer.sh
 curl -sSL "$BASE_URL/netblock_analyzer.py" -o "$INSTALL_DIR/netblock_analyzer.py"
 curl -sSL "$BASE_URL/cidr.txt" -o "$INSTALL_DIR/cidr.txt"
 curl -sSL "$BASE_URL/ip.txt" -o "$INSTALL_DIR/ip.txt"
+curl -sSL "$BASE_URL/cidr_ufo.txt" -o "$INSTALL_DIR/cidr_ufo.txt"
+curl -sSL "$BASE_URL/cidr_selectel.txt" -o "$INSTALL_DIR/cidr_selectel.txt"
+curl -sSL "$BASE_URL/cidr_cloudru.txt" -o "$INSTALL_DIR/cidr_cloudru.txt"
+curl -sSL "$BASE_URL/cidr_yandex.txt" -o "$INSTALL_DIR/cidr_yandex.txt"
+curl -sSL "$BASE_URL/cidr_vk.txt" -o "$INSTALL_DIR/cidr_vk.txt"
+curl -sSL "$BASE_URL/cidr_regru.txt" -o "$INSTALL_DIR/cidr_regru.txt"
 
 chmod +x "$INSTALL_DIR/netblock_analyzer.sh"
 
