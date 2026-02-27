@@ -14,7 +14,7 @@
 
 Выполните следующую команду в терминале (подходит как для Linux, так и для Termux на Android):
 ```bash
-curl -sSL https://raw.githubusercontent.com/Vinton777/netblock-analyzer/master/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/Vinton777/network-cidr-test-ip/master/install.sh | bash
 ```
 
 > **Примечание для Linux:** Скрипт устанавливается в `/opt/` и `/usr/local/bin/`. Если вы обычный пользователь (не root), скрипт попросит вас запустить его с правами суперпользователя: `curl ... | sudo bash`
