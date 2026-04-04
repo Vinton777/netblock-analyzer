@@ -185,7 +185,7 @@ def evaluate_cidr(cidr_str, ips, timeout, check_asn):
         
     return cidr_str, asn, provider, is_reachable, "ok"
 
-VERSION = "1.8.3"
+VERSION = "1.8.4"
 
 def main():
     work_dir = sys.argv[1] if len(sys.argv) > 1 else os.getcwd()
@@ -345,7 +345,7 @@ def main():
                     
                     print(f"{res_cidr:<18} | {asn:<12} | {provider_disp:<25} | {ping_color}")
                     
-                    if save_res and is_reachable:
+                    if is_reachable:
                         results.append([res_cidr, asn, provider, ping_status])
                         
                 except Exception as exc:
@@ -356,6 +356,13 @@ def main():
         os._exit(0)
     except Exception as e:
         print(f"\n{COLOR_RED}Ошибка при обработке: {e}{COLOR_RESET}")
+
+    if results:
+        print(f"\n{COLOR_GREEN}==== Итоговый список успешных (PING = yes) ===={COLOR_RESET}")
+        print(f"{COLOR_GREEN}{'CIDR/IP':<18} | {'ASN':<12} | {'Provider':<25}{COLOR_RESET}")
+        for row in results:
+            print(f"\033[92m{row[0]:<18}\033[0m | {row[1]:<12} | {row[2]:<25}")
+        print(f"{COLOR_GREEN}==============================================={COLOR_RESET}")
 
     # Сохранение результатов
     if save_res and results:
