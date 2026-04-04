@@ -185,7 +185,7 @@ def evaluate_cidr(cidr_str, ips, timeout, check_asn):
         
     return cidr_str, asn, provider, is_reachable, "ok"
 
-VERSION = "1.8.2"
+VERSION = "1.8.3"
 
 def main():
     work_dir = sys.argv[1] if len(sys.argv) > 1 else os.getcwd()
