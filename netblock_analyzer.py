@@ -185,7 +185,7 @@ def evaluate_cidr(cidr_str, ips, timeout, check_asn):
         
     return cidr_str, asn, provider, is_reachable, "ok"
 
-VERSION = "1.8.4"
+VERSION = "1.8.5"
 
 def main():
     work_dir = sys.argv[1] if len(sys.argv) > 1 else os.getcwd()
@@ -226,15 +226,35 @@ def main():
                 options[str(idx)] = (f"{short_name}", os.path.join("cidr_lists", f), 1)
                 idx += 1
 
-    selected_option = options['1']
-    filename = selected_option[1]
-    mode = selected_option[2]
+    config_path = os.path.expanduser("~/.netblock_analyzer.json")
     
     num_ips = 5
     timeout = 2
     max_threads = 20
     check_asn = False
     save_res = True
+    selected_option_key = '1'
+
+    if os.path.exists(config_path):
+        import json
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                cfg = json.load(f)
+                num_ips = cfg.get("num_ips", num_ips)
+                timeout = cfg.get("timeout", timeout)
+                max_threads = cfg.get("max_threads", max_threads)
+                check_asn = cfg.get("check_asn", check_asn)
+                save_res = cfg.get("save_res", save_res)
+                selected_option_key = str(cfg.get("selected_option_key", selected_option_key))
+        except Exception:
+            pass
+
+    if selected_option_key not in options:
+        selected_option_key = '1'
+
+    selected_option = options[selected_option_key]
+    filename = selected_option[1]
+    mode = selected_option[2]
 
     while True:
         print(f"\n{COLOR_GREEN}Главное меню:{COLOR_RESET}")
@@ -265,6 +285,7 @@ def main():
                 if not mode_val or mode_val == '0':
                     break
                 if mode_val in options:
+                    selected_option_key = mode_val
                     selected_option = options[mode_val]
                     filename = selected_option[1]
                     mode = selected_option[2]
@@ -278,12 +299,29 @@ def main():
             if sure:
                 print(f"\n{COLOR_GREEN}Настройки проверки сети{COLOR_RESET}\n")
                 if mode == 1:
-                    num_ips = get_int_input("Сколько IP проверять для каждого CIDR?", 5)
-                timeout = get_int_input("Timeout для ping в секундах?", 2)
-                max_threads = get_int_input("Сколько потоков использовать?", 20)
-                check_asn = get_yes_no_input("Отображать ASN и провайдера? (y/n) (может не работать при блокировках)", "n")
-                save_res = get_yes_no_input(f"Сохранять результаты? (y/n)", "y")
+                    num_ips = get_int_input("Сколько IP проверять для каждого CIDR?", num_ips)
+                timeout = get_int_input("Timeout для ping в секундах?", timeout)
+                max_threads = get_int_input("Сколько потоков использовать?", max_threads)
+                
+                check_asn_def = "y" if check_asn else "n"
+                check_asn = get_yes_no_input("Отображать ASN и провайдера? (y/n) (может не работать при блокировках)", check_asn_def)
+                
+                save_res_def = "y" if save_res else "n"
+                save_res = get_yes_no_input(f"Сохранять результаты? (y/n)", save_res_def)
         elif main_choice == '3':
+            import json
+            try:
+                with open(config_path, "w", encoding="utf-8") as f:
+                    json.dump({
+                        "num_ips": num_ips,
+                        "timeout": timeout,
+                        "max_threads": max_threads,
+                        "check_asn": check_asn,
+                        "save_res": save_res,
+                        "selected_option_key": selected_option_key
+                    }, f)
+            except Exception:
+                pass
             break
         else:
             print(f"{COLOR_RED}Неверный выбор.{COLOR_RESET}")
