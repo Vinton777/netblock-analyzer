@@ -7,6 +7,10 @@ import csv
 import signal
 import concurrent.futures
 import threading
+import time
+
+def clear_screen():
+    os.system('cls' if os.name == 'nt' else 'clear')
 
 def signal_handler(sig, frame):
     print('\n\033[1;31m[!] Прервано пользователем (Ctrl+C). Выход...\033[0m')
@@ -205,7 +209,7 @@ def edit_file(filename, work_dir):
     except Exception as e:
         print(f"{COLOR_RED}Ошибка: {e}{COLOR_RESET}")
 
-VERSION = "1.8.7"
+VERSION = "1.8.8"
 
 def main():
     work_dir = sys.argv[1] if len(sys.argv) > 1 else os.getcwd()
@@ -226,7 +230,6 @@ def main():
 {COLOR_YELLOW}     ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝╚══════╝╚═╝   ╚══════╝╚══════╝╚═╝  ╚═╝{COLOR_RESET}
                                                  {COLOR_WHITE}v{VERSION}{COLOR_GRAY} by Vinton{COLOR_RESET}
 """
-    print(logo_text)
     options = {
         '1': ("Свой список CIDR", 'cidr.txt', 1),
         '2': ("Свой список IP", 'ip.txt', 2),
@@ -291,6 +294,8 @@ def main():
     mode = selected_option[2]
 
     while True:
+        clear_screen()
+        print(logo_text)
         print(f"\n{COLOR_GREEN}Главное меню:{COLOR_RESET}")
         print(f"{COLOR_YELLOW}1. Выбрать список для проверки (сейчас выбран: {selected_option[0]}){COLOR_RESET}")
         print(f"{COLOR_YELLOW}2. Настройки проверки сети{COLOR_RESET}")
@@ -345,6 +350,8 @@ def main():
                 save_res = get_yes_no_input(f"Сохранять результаты? (y/n)", save_res_def)
         elif main_choice == '3':
             while True:
+                clear_screen()
+                print(logo_text)
                 print(f"\n{COLOR_GREEN}Редактирование списков:{COLOR_RESET}")
                 print(f"{COLOR_YELLOW}1. cidr.txt (Свой список CIDR){COLOR_RESET}")
                 print(f"{COLOR_YELLOW}2. ip.txt (Свой список IP){COLOR_RESET}")
@@ -362,6 +369,7 @@ def main():
                     break
                 else:
                     print(f"{COLOR_RED}Неверный выбор.{COLOR_RESET}")
+                    time.sleep(1)
         elif main_choice == '4':
             import json
             try:
@@ -379,6 +387,10 @@ def main():
             break
         else:
             print(f"{COLOR_RED}Неверный выбор.{COLOR_RESET}")
+            time.sleep(1)
+    
+    clear_screen()
+    print(logo_text)
     
     target_file = os.path.join(work_dir, filename)
     if not os.path.exists(target_file):
