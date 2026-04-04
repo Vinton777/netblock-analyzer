@@ -9,30 +9,38 @@ import concurrent.futures
 import threading
 
 def signal_handler(sig, frame):
-    print('\n[!] Прервано пользователем (Ctrl+C). Выход...')
+    print('\n\033[1;31m[!] Прервано пользователем (Ctrl+C). Выход...\033[0m')
     os._exit(0)
 
 signal.signal(signal.SIGINT, signal_handler)
 
+COLOR_RESET = "\033[0m"
+COLOR_GREEN = "\033[1;32m"
+COLOR_YELLOW = "\033[1;33m"
+COLOR_WHITE = "\033[1;37m"
+COLOR_RED = "\033[1;31m"
+COLOR_GRAY = "\033[0;90m"
+
 def get_int_input(prompt, default):
     while True:
-        val = input(f"{prompt} [{default}]: ").strip()
+        val = input(f" {COLOR_GREEN}[?]{COLOR_RESET} {COLOR_YELLOW}{prompt}{COLOR_RESET} [{default}]: ").strip()
         if not val:
             return default
         try:
             return int(val)
         except ValueError:
-            print("Пожалуйста, введите корректное целое число.")
+            print(f"{COLOR_RED}Пожалуйста, введите корректное целое число.{COLOR_RESET}")
 
 def get_yes_no_input(prompt, default):
     while True:
-        val = input(f"{prompt} [{default}]: ").strip().lower()
+        val = input(f" {COLOR_GREEN}[?]{COLOR_RESET} {COLOR_YELLOW}{prompt}{COLOR_RESET} [{default}]: ").strip().lower()
         if not val:
             return default.lower() == 'y'
         if val in ('y', 'yes'):
             return True
         if val in ('n', 'no'):
             return False
+        print(f"{COLOR_RED}Пожалуйста, введите 'y' или 'n'.{COLOR_RESET}")
 
 def check_ping(ip, timeout):
     # Пинг 2 пакета
@@ -164,12 +172,8 @@ def main():
     work_dir = sys.argv[1] if len(sys.argv) > 1 else os.getcwd()
     script_dir = os.path.dirname(os.path.abspath(__file__))
     
-    print(f"==========================================")
-    print(f"NetBlock Analyzer v{VERSION}")
-    print(f"             by Vinton")
-    print(f"==========================================")
-    
-    print("\n--- Режим работы ---")
+    print(f"\n{COLOR_GREEN}NetBlock Analyzer v{VERSION}{COLOR_RESET}")
+    print(f"{COLOR_GRAY}by Vinton{COLOR_RESET}\n")
     options = {
         '1': ("Свой список CIDR", 'cidr.txt', 1),
         '2': ("Свой список IP", 'ip.txt', 2),
@@ -199,10 +203,11 @@ def main():
                 options[str(idx)] = (f"Sub-list: {name_disp}", os.path.join("cidr_lists", f), 1)
                 idx += 1
     while True:
-        print("Выберите списки для проверки:")
+        print(f"{COLOR_GREEN}Выберите список для проверки:{COLOR_RESET}\n")
         for k, v in options.items():
-            print(f"{k} - {v[0]} ({v[1]})")
-        mode_val = input("Ваш выбор [1]: ").strip()
+            print(f"{COLOR_YELLOW}{k}. {v[0]} ({v[1]}){COLOR_RESET}")
+        print()
+        mode_val = input(f" {COLOR_GREEN}[?]{COLOR_RESET} {COLOR_YELLOW}Ваш выбор{COLOR_RESET} [1]: ").strip()
         if not mode_val:
             mode_val = '1'
         if mode_val in options:
@@ -210,7 +215,7 @@ def main():
             filename = selected_option[1]
             mode = selected_option[2]
             break
-        print(f"Пожалуйста, введите число от 1 до {len(options)}.\n")
+        print(f"{COLOR_RED}Пожалуйста, введите число от 1 до {len(options)}.{COLOR_RESET}\n")
     
     target_file = os.path.join(work_dir, filename)
     if not os.path.exists(target_file):
@@ -218,13 +223,13 @@ def main():
         if os.path.exists(fallback_file):
             target_file = fallback_file
         else:
-            print(f"Ошибка: Файл {filename} не найден ни в текущей папке ({work_dir}), ни в системной ({script_dir}).")
+            print(f"{COLOR_RED}Ошибка: Файл {filename} не найден ни в текущей папке ({work_dir}), ни в системной ({script_dir}).{COLOR_RESET}")
             sys.exit(1)
             
     base_name = os.path.basename(filename).replace(".txt", "")
     results_file = os.path.join(work_dir, f"results_{base_name}.csv")
         
-    print("\n--- Настройки проверки сети ---")
+    print(f"\n{COLOR_GREEN}Настройки проверки сети{COLOR_RESET}\n")
     if mode == 1:
         num_ips = get_int_input("Сколько IP проверять для каждого CIDR?", 5)
     else:
@@ -233,7 +238,7 @@ def main():
     max_threads = get_int_input("Сколько потоков использовать?", 20)
     check_asn = get_yes_no_input("Отображать ASN и провайдера? (y/n) (может не работать при блокировках)", "y")
     save_res = get_yes_no_input(f"Сохранять результаты в {results_file} (y/n)?", "y")
-    print("-------------------------------\n")
+    print()
 
     results = []
     
@@ -250,8 +255,7 @@ def main():
         print(f"Ошибка чтения {filename}: {e}")
         sys.exit(1)
 
-    print(f"{'CIDR/IP':<18} | {'ASN':<12} | {'Provider':<25} | {'PING'}")
-    print("-" * 68)
+    print(f"\n{COLOR_GREEN}{'CIDR/IP':<18} | {'ASN':<12} | {'Provider':<25} | {'PING'}{COLOR_RESET}")
 
     try:
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_threads) as executor:
@@ -287,10 +291,10 @@ def main():
                     print(f"{cidr_str:<18} | {'Error':<12} | {'--':<25} | \033[91merror\033[0m")
                     
     except KeyboardInterrupt:
-        print('\n[!] Прервано пользователем (Ctrl+C). Выход...')
+        print(f'\n{COLOR_RED}[!] Прервано пользователем (Ctrl+C). Выход...{COLOR_RESET}')
         os._exit(0)
     except Exception as e:
-        print(f"\nОшибка при обработке: {e}")
+        print(f"\n{COLOR_RED}Ошибка при обработке: {e}{COLOR_RESET}")
 
     # Сохранение результатов
     if save_res and results:
@@ -299,9 +303,9 @@ def main():
                 writer = csv.writer(cf)
                 writer.writerow(["CIDR_OR_IP", "ASN", "PROVIDER", "PING"])
                 writer.writerows(results)
-            print(f"\n[+] Результаты успешно сохранены в {results_file}")
+            print(f"\n{COLOR_GREEN}[+] Результаты успешно сохранены в {results_file}{COLOR_RESET}")
         except Exception as e:
-            print(f"\n[-] Ошибка при сохранении результатов: {e}")
+            print(f"\n{COLOR_RED}[-] Ошибка при сохранении результатов: {e}{COLOR_RESET}")
 
 if __name__ == '__main__':
     main()
