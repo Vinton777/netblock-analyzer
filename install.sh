@@ -59,8 +59,7 @@ echo "Установка успешно завершена!"
 echo "Теперь вы можете запустить NetBlock Analyzer из любой директории командой: netblock_analyzer"
 
 echo "Запуск NetBlock Analyzer..."
-netblock_analyzer
-
-# Оставляем пользователя в папке установленного скрипта после выхода
 cd "$INSTALL_DIR" || exit
+netblock_analyzer < /dev/tty
+
 exec "${SHELL:-bash}" < /dev/tty
