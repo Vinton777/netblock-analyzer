@@ -166,7 +166,7 @@ def evaluate_cidr(cidr_str, ips, timeout, check_asn):
         
     return cidr_str, asn, provider, is_reachable, "ok"
 
-VERSION = "1.7.0"
+VERSION = "1.8.0"
 
 def main():
     work_dir = sys.argv[1] if len(sys.argv) > 1 else os.getcwd()
@@ -197,25 +197,72 @@ def main():
         for f in files:
             if f.endswith('.txt'):
                 name_disp = f.replace(".txt", "").replace("__", " ").strip()
-                # Удаляем префикс из цифр если есть (например, 001, 002)
-                if name_disp[:3].isdigit() and name_disp[3] == ' ':
-                    name_disp = name_disp[4:]
-                options[str(idx)] = (f"Sub-list: {name_disp}", os.path.join("cidr_lists", f), 1)
+                # Сокращение имени: берём первое слово до "-" или "_"
+                import re
+                parts = re.split(r'[-_]', name_disp)
+                short_name = parts[0].strip().capitalize()
+                if short_name.upper() == "AS" and len(parts) > 1:
+                    short_name = parts[1].strip().capitalize()
+                
+                options[str(idx)] = (f"{short_name}", os.path.join("cidr_lists", f), 1)
                 idx += 1
+
+    selected_option = options['1']
+    filename = selected_option[1]
+    mode = selected_option[2]
+    
+    num_ips = 5
+    timeout = 2
+    max_threads = 20
+    check_asn = False
+    save_res = True
+
     while True:
-        print(f"{COLOR_GREEN}Выберите список для проверки:{COLOR_RESET}\n")
-        for k, v in options.items():
-            print(f"{COLOR_YELLOW}{k}. {v[0]} ({v[1]}){COLOR_RESET}")
-        print()
-        mode_val = input(f" {COLOR_GREEN}[?]{COLOR_RESET} {COLOR_YELLOW}Ваш выбор{COLOR_RESET} [1]: ").strip()
-        if not mode_val:
-            mode_val = '1'
-        if mode_val in options:
-            selected_option = options[mode_val]
-            filename = selected_option[1]
-            mode = selected_option[2]
+        print(f"\n{COLOR_GREEN}Главное меню:{COLOR_RESET}")
+        print(f"{COLOR_YELLOW}1. Выбрать список для проверки (сейчас выбран: {selected_option[0]}){COLOR_RESET}")
+        print(f"{COLOR_YELLOW}2. Настройки проверки сети{COLOR_RESET}")
+        print(f"{COLOR_YELLOW}3. Начать тест{COLOR_RESET}")
+        print(f"{COLOR_YELLOW}0. Выход{COLOR_RESET}")
+        
+        main_choice = input(f" {COLOR_GREEN}[?]{COLOR_RESET} {COLOR_YELLOW}Ваш выбор{COLOR_RESET} [3]: ").strip()
+        if not main_choice:
+            main_choice = '3'
+            
+        if main_choice == '0':
+            sys.exit(0)
+        elif main_choice == '1':
+            while True:
+                print(f"\n{COLOR_GREEN}Выберите список для проверки:{COLOR_RESET}\n")
+                for k, v in options.items():
+                    print(f"{COLOR_YELLOW}{k}. {v[0]} ({v[1]}){COLOR_RESET}")
+                print(f"{COLOR_YELLOW}0. Назад{COLOR_RESET}\n")
+                
+                mode_val = input(f" {COLOR_GREEN}[?]{COLOR_RESET} {COLOR_YELLOW}Ваш выбор{COLOR_RESET} [0]: ").strip()
+                if not mode_val or mode_val == '0':
+                    break
+                if mode_val in options:
+                    selected_option = options[mode_val]
+                    filename = selected_option[1]
+                    mode = selected_option[2]
+                    if mode != 1:
+                        num_ips = 1
+                    break
+                print(f"{COLOR_RED}Пожалуйста, введите корректное число.{COLOR_RESET}\n")
+        elif main_choice == '2':
+            print(f"\n{COLOR_RED}Внимание: изменение настроек пинга на ваш страх и риск. Не ручаюсь за них.{COLOR_RESET}")
+            sure = get_yes_no_input("Вы уверены, что хотите изменить параметры? (y/n)", "n")
+            if sure:
+                print(f"\n{COLOR_GREEN}Настройки проверки сети{COLOR_RESET}\n")
+                if mode == 1:
+                    num_ips = get_int_input("Сколько IP проверять для каждого CIDR?", 5)
+                timeout = get_int_input("Timeout для ping в секундах?", 2)
+                max_threads = get_int_input("Сколько потоков использовать?", 20)
+                check_asn = get_yes_no_input("Отображать ASN и провайдера? (y/n) (может не работать при блокировках)", "n")
+                save_res = get_yes_no_input(f"Сохранять результаты? (y/n)", "y")
+        elif main_choice == '3':
             break
-        print(f"{COLOR_RED}Пожалуйста, введите число от 1 до {len(options)}.{COLOR_RESET}\n")
+        else:
+            print(f"{COLOR_RED}Неверный выбор.{COLOR_RESET}")
     
     target_file = os.path.join(work_dir, filename)
     if not os.path.exists(target_file):
@@ -228,17 +275,7 @@ def main():
             
     base_name = os.path.basename(filename).replace(".txt", "")
     results_file = os.path.join(work_dir, f"results_{base_name}.csv")
-        
-    print(f"\n{COLOR_GREEN}Настройки проверки сети{COLOR_RESET}\n")
-    if mode == 1:
-        num_ips = get_int_input("Сколько IP проверять для каждого CIDR?", 5)
-    else:
-        num_ips = 1
-    timeout = get_int_input("Timeout для ping в секундах?", 2)
-    max_threads = get_int_input("Сколько потоков использовать?", 20)
-    check_asn = get_yes_no_input("Отображать ASN и провайдера? (y/n) (может не работать при блокировках)", "y")
-    save_res = get_yes_no_input(f"Сохранять результаты в {results_file} (y/n)?", "y")
-    print()
+
 
     results = []
     
