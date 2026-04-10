@@ -209,7 +209,7 @@ def edit_file(filename, work_dir):
     except Exception as e:
         print(f"{COLOR_RED}Ошибка: {e}{COLOR_RESET}")
 
-VERSION = "1.9.7"
+VERSION = "1.9.8"
 
 def main():
     work_dir = sys.argv[1] if len(sys.argv) > 1 else os.getcwd()
@@ -232,36 +232,24 @@ def main():
 """
     options = {
         '1': ("Свой список CIDR", 'cidr.txt', 1),
-        '2': ("Свой список IP", 'ip.txt', 2),
-        '3': ("UFO", 'cidr_ufo.txt', 1),
-        '4': ("Selectel 1", 'cidr_selectel_1.txt', 1),
-        '5': ("Selectel 2", 'cidr_selectel_2.txt', 1),
-        '6': ("Selectel Old", 'cidr_selectel.txt', 1),
-        '7': ("Cloud.ru", 'cidr_cloudru.txt', 1),
-        '8': ("Yandex", 'cidr_yandex.txt', 1),
-        '9': ("VK", 'cidr_vk.txt', 1),
-        '10': ("Reg.ru", 'cidr_regru.txt', 1),
-        '11': ("Timeweb", 'timeweb.txt', 1),
-        '12': ("CIDR Whitelist", 'cidrwhitelist.txt', 1),
-        '13': ("Selectel New", 'cidr_selectel_new.txt', 1)
+        '2': ("Свой список IP", 'ip.txt', 2)
     }
     
     # Динамическая подгрузка из cidr_lists
     cidr_lists_dir = os.path.join(script_dir, "cidr_lists")
     if os.path.isdir(cidr_lists_dir):
         files = sorted(os.listdir(cidr_lists_dir))
-        idx = 14
+        idx = 3
         for f in files:
-            if f.endswith('.txt'):
-                name_disp = f.replace(".txt", "").replace("__", " ").strip()
-                # Сокращение имени: берём первое слово до "-" или "_"
-                import re
-                parts = re.split(r'[-_]', name_disp)
-                short_name = parts[0].strip().capitalize()
-                if short_name.upper() == "AS" and len(parts) > 1:
-                    short_name = parts[1].strip().capitalize()
+            if f.endswith('.txt') and f not in ['cidr.txt', 'ip.txt']:
+                name_disp = f.replace(".txt", "").replace("cidr_", "").replace("cidr", "").replace("_", " ").strip().title()
                 
-                options[str(idx)] = (f"{short_name}", os.path.join("cidr_lists", f), 1)
+                # Фикс частых аббревиатур
+                name_disp = name_disp.replace("Ufo", "UFO").replace("Vk", "VK")
+                if not name_disp:
+                    name_disp = f
+                
+                options[str(idx)] = (name_disp, os.path.join("cidr_lists", f), 1)
                 idx += 1
 
     config_path = os.path.expanduser("~/.netblock_analyzer.json")
