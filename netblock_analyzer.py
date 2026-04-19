@@ -209,7 +209,45 @@ def edit_file(filename, work_dir):
     except Exception as e:
         print(f"{COLOR_RED}Ошибка: {e}{COLOR_RESET}")
 
-VERSION = "1.9.9"
+def get_downloads_folder():
+    if os.path.exists("/data/data/com.termux"):
+        return os.path.expanduser("~/storage/downloads")
+    else:
+        return os.path.join(os.path.expanduser("~"), "Downloads")
+
+VERSION = "2.0.0"
+
+def check_for_updates(auto_update):
+    import urllib.request
+    import urllib.error
+    url = "https://raw.githubusercontent.com/Vinton777/network-cidr-test-ip/master/netblock_analyzer.py"
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=5) as response:
+            content = response.read().decode('utf-8')
+        remote_version = None
+        for line in content.splitlines():
+            if line.startswith("VERSION = "):
+                remote_version = line.split('"')[1]
+                break
+        if remote_version and remote_version != VERSION:
+            v_remote = [int(x) for x in remote_version.split('.')]
+            v_local = [int(x) for x in VERSION.split('.')]
+            if v_remote > v_local:
+                if auto_update:
+                    print(f"\n{COLOR_GREEN}[+] Автообновление до версии {remote_version}...{COLOR_RESET}")
+                    os.system("curl -sSL https://raw.githubusercontent.com/Vinton777/network-cidr-test-ip/master/install.sh | bash")
+                    print(f"{COLOR_GREEN}Готово. Пожалуйста, перезапустите скрипт.{COLOR_RESET}")
+                    sys.exit(0)
+                else:
+                    ans = get_yes_no_input(f"Доступна новая версия скрипта ({remote_version}). Обновить сейчас? (y/n)", "n")
+                    if ans:
+                        print(f"\n{COLOR_GREEN}[+] Обновляем...{COLOR_RESET}")
+                        os.system("curl -sSL https://raw.githubusercontent.com/Vinton777/network-cidr-test-ip/master/install.sh | bash")
+                        print(f"{COLOR_GREEN}Готово. Пожалуйста, перезапустите скрипт.{COLOR_RESET}")
+                        sys.exit(0)
+    except Exception:
+        pass  # Игнорируем ошибки сети при проверке обновлений
 
 def main():
     work_dir = sys.argv[1] if len(sys.argv) > 1 else os.getcwd()
@@ -261,6 +299,7 @@ def main():
     save_res = True
     selected_option_key = '1'
     silent_mode = False
+    auto_update = False
 
     if os.path.exists(config_path):
         import json
@@ -274,6 +313,7 @@ def main():
                 save_res = cfg.get("save_res", save_res)
                 selected_option_key = str(cfg.get("selected_option_key", selected_option_key))
                 silent_mode = cfg.get("silent_mode", silent_mode)
+                auto_update = cfg.get("auto_update", auto_update)
         except Exception:
             pass
 
@@ -284,6 +324,9 @@ def main():
     filename = selected_option[1]
     mode = selected_option[2]
 
+    # Проверка обновлений при запуске
+    check_for_updates(auto_update)
+
     while True:
         clear_screen()
         print(logo_text)
@@ -291,15 +334,19 @@ def main():
         print(f"{COLOR_YELLOW}1. Выбрать список для проверки (сейчас выбран: {selected_option[0]}){COLOR_RESET}")
         print(f"{COLOR_YELLOW}2. Настройки проверки сети{COLOR_RESET}")
         print(f"{COLOR_YELLOW}3. Редактировать свои списки (cidr.txt / ip.txt){COLOR_RESET}")
-        print(f"{COLOR_YELLOW}4. Начать тест{COLOR_RESET}")
+        
+        auto_update_text = "Вкл" if auto_update else "Выкл"
+        print(f"{COLOR_YELLOW}4. Автообновление (сейчас: {auto_update_text}){COLOR_RESET}")
+        
+        print(f"{COLOR_YELLOW}5. Начать тест{COLOR_RESET}")
         print(f"{COLOR_YELLOW}0. Выход{COLOR_RESET}")
         
-        main_choice = safe_input(f" {COLOR_GREEN}[?]{COLOR_RESET} {COLOR_YELLOW}Ваш выбор{COLOR_RESET} [4]: ")
+        main_choice = safe_input(f" {COLOR_GREEN}[?]{COLOR_RESET} {COLOR_YELLOW}Ваш выбор{COLOR_RESET} [5]: ")
         if main_choice is None:
             continue
         main_choice = main_choice.strip()
         if not main_choice:
-            main_choice = '4'
+            main_choice = '5'
             
         if main_choice == '0':
             sys.exit(0)
@@ -362,6 +409,26 @@ def main():
                     print(f"{COLOR_RED}Неверный выбор.{COLOR_RESET}")
                     time.sleep(1)
         elif main_choice == '4':
+            auto_update = not auto_update
+            # Сразу сохраним
+            import json
+            try:
+                with open(config_path, "w", encoding="utf-8") as f:
+                    json.dump({
+                        "num_ips": num_ips,
+                        "timeout": timeout,
+                        "max_threads": max_threads,
+                        "check_asn": check_asn,
+                        "save_res": save_res,
+                        "selected_option_key": selected_option_key,
+                        "silent_mode": silent_mode,
+                        "auto_update": auto_update
+                    }, f)
+            except Exception:
+                pass
+            print(f"{COLOR_GREEN}Раздел автообновления: {'Включено' if auto_update else 'Выключено'}.{COLOR_RESET}")
+            time.sleep(1)
+        elif main_choice == '5':
             clear_screen()
             print(logo_text)
             print(f"\n{COLOR_GREEN}Перед началом выберите режим отображения:{COLOR_RESET}")
@@ -387,7 +454,8 @@ def main():
                         "check_asn": check_asn,
                         "save_res": save_res,
                         "selected_option_key": selected_option_key,
-                        "silent_mode": silent_mode
+                        "silent_mode": silent_mode,
+                        "auto_update": auto_update
                     }, f)
             except Exception:
                 pass
@@ -409,7 +477,13 @@ def main():
             sys.exit(1)
             
     base_name = os.path.basename(filename).replace(".txt", "")
-    results_file = os.path.join(work_dir, f"results_{base_name}.csv")
+    downloads_dir = get_downloads_folder()
+    if not os.path.exists(downloads_dir):
+        try:
+            os.makedirs(downloads_dir, exist_ok=True)
+        except Exception:
+            downloads_dir = work_dir
+    results_file = os.path.join(downloads_dir, f"results_{base_name}.csv")
 
 
     results = []
