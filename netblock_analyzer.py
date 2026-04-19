@@ -215,9 +215,12 @@ def get_downloads_folder():
     else:
         return os.path.join(os.path.expanduser("~"), "Downloads")
 
-VERSION = "2.0.1"
+VERSION = "2.0.2"
 
 def check_for_updates(auto_update):
+    if not auto_update:
+        return
+        
     import urllib.request
     import urllib.error
     url = "https://raw.githubusercontent.com/Vinton777/network-cidr-test-ip/master/netblock_analyzer.py"
@@ -234,18 +237,11 @@ def check_for_updates(auto_update):
             v_remote = [int(x) for x in remote_version.split('.')]
             v_local = [int(x) for x in VERSION.split('.')]
             if v_remote > v_local:
-                if auto_update:
-                    print(f"\n{COLOR_GREEN}[+] Автообновление до версии {remote_version}...{COLOR_RESET}")
-                    os.system("curl -sSL https://raw.githubusercontent.com/Vinton777/network-cidr-test-ip/master/install.sh | bash")
-                    print(f"{COLOR_GREEN}Готово. Пожалуйста, перезапустите скрипт.{COLOR_RESET}")
-                    sys.exit(0)
-                else:
-                    ans = get_yes_no_input(f"Доступна новая версия скрипта ({remote_version}). Обновить сейчас? (y/n)", "n")
-                    if ans:
-                        print(f"\n{COLOR_GREEN}[+] Обновляем...{COLOR_RESET}")
-                        os.system("curl -sSL https://raw.githubusercontent.com/Vinton777/network-cidr-test-ip/master/install.sh | bash")
-                        print(f"{COLOR_GREEN}Готово. Пожалуйста, перезапустите скрипт.{COLOR_RESET}")
-                        sys.exit(0)
+                print(f"\n{COLOR_GREEN}[+] Автообновление до версии {remote_version}...{COLOR_RESET}")
+                os.system("curl -sSL https://raw.githubusercontent.com/Vinton777/network-cidr-test-ip/master/install.sh | bash")
+                print(f"{COLOR_GREEN}Готово. Пожалуйста, перезапустите скрипт.{COLOR_RESET}")
+                import sys
+                sys.exit(0)
     except Exception:
         pass  # Игнорируем ошибки сети при проверке обновлений
 
