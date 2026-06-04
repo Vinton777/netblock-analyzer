@@ -48,8 +48,7 @@ if [ "$REMOTE_VERSION" != "0.0.0" ] && [ "$LOCAL_VERSION" != "$REMOTE_VERSION" ]
         if command -v curl >/dev/null 2>&1 && curl --version >/dev/null 2>&1; then
             curl -sSL "https://raw.githubusercontent.com/Vinton777/network-cidr-test-ip/master/install.sh?nocache=$RANDOM" | bash
         else
-            echo "Попытка автообновления через Python..."
-            python3 -c "import urllib.request, random; urllib.request.urlretrieve('https://raw.githubusercontent.com/Vinton777/network-cidr-test-ip/master/install.sh?nocache=' + str(random.random()), 'temp_install.sh')"
+            python3 -c "import urllib.request, random; req = urllib.request.Request('https://raw.githubusercontent.com/Vinton777/network-cidr-test-ip/master/install.sh?nocache=' + str(random.random()), headers={'User-Agent': 'Mozilla/5.0'}); r = urllib.request.urlopen(req); open('temp_install.sh', 'w', encoding='utf-8').write(r.read().decode('utf-8'))"
             bash temp_install.sh
             rm -f temp_install.sh
         fi

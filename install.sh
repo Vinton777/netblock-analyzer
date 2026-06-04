@@ -81,7 +81,7 @@ else
             exit 1
         fi
     fi
-    $PYTHON_CMD -c "import urllib.request; urllib.request.urlretrieve('$TAR_URL', 'archive.tar.gz')"
+    $PYTHON_CMD -c "import urllib.request; req = urllib.request.Request('$TAR_URL', headers={'User-Agent': 'Mozilla/5.0'}); with urllib.request.urlopen(req) as r, open('archive.tar.gz', 'wb') as f: f.write(r.read())"
     tar -xzf archive.tar.gz -C "$INSTALL_DIR" --strip-components=1
     rm -f archive.tar.gz
 fi
