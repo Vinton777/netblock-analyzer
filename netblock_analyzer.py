@@ -258,7 +258,7 @@ def get_downloads_folder():
     else:
         return os.path.join(os.path.expanduser("~"), "Downloads")
 
-VERSION = "2.0.7"
+VERSION = "2.0.8"
 
 def check_for_updates(auto_update):
     if not auto_update:
@@ -283,11 +283,13 @@ def check_for_updates(auto_update):
                 print(f"\n{COLOR_GREEN}[+] Автообновление до версии {remote_version}...{COLOR_RESET}")
                 try:
                     import random
+                    import tempfile
                     inst_url = f"https://raw.githubusercontent.com/Vinton777/network-cidr-test-ip/master/install.sh?nocache={random.random()}"
                     req_inst = urllib.request.Request(inst_url, headers={'User-Agent': 'Mozilla/5.0'})
                     with urllib.request.urlopen(req_inst, timeout=10) as resp_inst:
                         install_script = resp_inst.read().decode('utf-8')
-                    temp_path = "temp_install.sh"
+                    temp_dir = tempfile.gettempdir()
+                    temp_path = os.path.join(temp_dir, "temp_install.sh")
                     with open(temp_path, "w", encoding="utf-8") as f_inst:
                         f_inst.write(install_script)
                     os.system(f"bash {temp_path}")

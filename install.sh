@@ -81,9 +81,10 @@ else
             exit 1
         fi
     fi
-    $PYTHON_CMD -c "import urllib.request; req = urllib.request.Request('$TAR_URL', headers={'User-Agent': 'Mozilla/5.0'}); open('archive.tar.gz', 'wb').write(urllib.request.urlopen(req).read())"
-    tar -xzf archive.tar.gz -C "$INSTALL_DIR" --strip-components=1
-    rm -f archive.tar.gz
+    TMP_ARCHIVE="${TMPDIR:-/tmp}/archive.tar.gz"
+    $PYTHON_CMD -c "import urllib.request; req = urllib.request.Request('$TAR_URL', headers={'User-Agent': 'Mozilla/5.0'}); open('$TMP_ARCHIVE', 'wb').write(urllib.request.urlopen(req).read())"
+    tar -xzf "$TMP_ARCHIVE" -C "$INSTALL_DIR" --strip-components=1
+    rm -f "$TMP_ARCHIVE"
 fi
 
 chmod +x "$INSTALL_DIR/netblock_analyzer.sh"
