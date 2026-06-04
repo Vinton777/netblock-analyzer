@@ -8,6 +8,8 @@ import signal
 import concurrent.futures
 import threading
 import time
+import socket
+import errno
 
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -65,14 +67,71 @@ def get_yes_no_input(prompt, default):
             return False
         print(f"{COLOR_RED}Пожалуйста, введите 'y' или 'n'.{COLOR_RESET}")
 
-def check_ping(ip, timeout):
-    # Пинг 2 пакета
-    cmd = ['ping', '-c', '2', '-W', str(timeout), str(ip)]
-    try:
-        res = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        return res.returncode == 0
-    except Exception:
-        return False
+def check_host(ip, timeout):
+    result = [False]
+    result_lock = threading.Lock()
+    
+    # TCP-подключения к портам 80, 22, 443
+    def check_tcp(port):
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(timeout)
+        try:
+            res = s.connect_ex((str(ip), port))
+            # 0 — порт открыт. ECONNREFUSED/WSAECONNREFUSED — порт закрыт, но узел жив
+            if res == 0 or res in (111, 10061):
+                with result_lock:
+                    result[0] = True
+        except Exception:
+            pass
+        finally:
+            s.close()
+
+    # Системный ICMP-пинг
+    def check_icmp():
+        if os.name == 'nt':
+            cmd = ['ping', '-n', '1', '-w', str(int(timeout * 1000)), str(ip)]
+        else:
+            cmd = ['ping', '-c', '1', '-W', str(timeout), str(ip)]
+        try:
+            res = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            if res.returncode == 0:
+                with result_lock:
+                    result[0] = True
+        except Exception:
+            pass
+
+    threads = []
+    # Запускаем TCP-проверки портов
+    for port in [443, 80, 22]:
+        t = threading.Thread(target=check_tcp, args=(port,), daemon=True)
+        t.start()
+        threads.append(t)
+        
+    # Запускаем ICMP-пинг
+    t_icmp = threading.Thread(target=check_icmp, daemon=True)
+    t_icmp.start()
+    threads.append(t_icmp)
+    
+    # Ждём завершения или первого успешного ответа
+    start_t = time.time()
+    while time.time() - start_t < timeout + 0.2:
+        with result_lock:
+            if result[0]:
+                return True
+        if not any(t.is_alive() for t in threads):
+            break
+        time.sleep(0.02)
+        
+    with result_lock:
+        return result[0]
+
+def check_ip_task(ip, cidr, timeout, cidr_status, results_lock):
+    with results_lock:
+        if cidr_status.get(cidr) == "yes":
+            return ip, cidr, False, True  # Пропускаем, так как CIDR уже доступен
+            
+    is_reachable = check_host(ip, timeout)
+    return ip, cidr, is_reachable, False
 
 asn_cache = {}
 whois_lock = threading.Lock()
@@ -135,53 +194,37 @@ def get_asn_info(cidr_obj):
 
 def get_ips_to_test(cidr_str, num_ips):
     try:
-        # strict=False позволяет принимать сети вида 192.168.1.5/24 и приводить их к базовому адресу
         network = ipaddress.IPv4Network(cidr_str, strict=False)
     except Exception:
         return None  # Некорректный или не-IPv4 CIDR
     
     total_ips = network.num_addresses
-    ips = []
     
-    if total_ips == 1: # /32
-        ips.append(network.network_address)
-    elif total_ips == 2: # /31
-        ips.append(network.network_address)
-        if num_ips > 1:
-            ips.append(network.network_address + 1)
-    else:
-        first_ip = network.network_address + 1
-        last_ip = network.broadcast_address - 1
+    if total_ips <= 2:
+        return [network.network_address + i for i in range(total_ips)]
         
-        ips.append(first_ip)
-        if num_ips > 1:
-            if last_ip not in ips:
-                ips.append(last_ip)
-                
-        remaining = num_ips - len(ips)
-        if remaining > 0 and total_ips > 4:
-            attempts = 0
-            added = 0
-            # Математическая генерация без создания полного списка в оперативной памяти
-            while added < remaining and attempts < remaining * 3:
-                rand_ip = network.network_address + random.randint(2, total_ips - 3)
-                if rand_ip not in ips:
-                    ips.append(rand_ip)
-                    added += 1
-                attempts += 1
-                
-    return ips
+    usable_ips_count = total_ips - 2 if total_ips > 2 else total_ips
+    if num_ips >= usable_ips_count:
+        return list(network.hosts())
+        
+    hosts = list(network.hosts())
+    if not hosts:
+        return []
+        
+    if len(hosts) <= num_ips:
+        return hosts
+        
+    return random.sample(hosts, num_ips)
 
 def evaluate_cidr(cidr_str, ips, timeout, check_asn):
+    # Данная функция оставлена для совместимости, реальная проверка переехала в check_ip_task
     if ips is None:
         return cidr_str, "Invalid", "--", False, "error"
-        
     is_reachable = False
     for ip in ips:
-        if check_ping(ip, timeout):
+        if check_host(ip, timeout):
             is_reachable = True
             break
-            
     if check_asn:
         asn, provider = get_asn_info(ipaddress.IPv4Network(cidr_str, strict=False))
     else:
@@ -215,7 +258,7 @@ def get_downloads_folder():
     else:
         return os.path.join(os.path.expanduser("~"), "Downloads")
 
-VERSION = "2.0.3"
+VERSION = "2.0.4"
 
 def check_for_updates(auto_update):
     if not auto_update:
@@ -246,6 +289,12 @@ def check_for_updates(auto_update):
         pass  # Игнорируем ошибки сети при проверке обновлений
 
 def main():
+    if sys.platform == "win32":
+        try:
+            import io
+            sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+        except Exception:
+            pass
     work_dir = sys.argv[1] if len(sys.argv) > 1 else os.getcwd()
     script_dir = os.path.dirname(os.path.abspath(__file__))
     
@@ -484,7 +533,6 @@ def main():
     now_str = datetime.datetime.now().strftime("%d.%m.%y %H-%M")
     results_file = os.path.join(downloads_dir, f"results_{base_name}_{now_str}.csv")
 
-
     results = []
     
     tasks = []
@@ -512,6 +560,50 @@ def main():
     completed = 0
     test_running = True
 
+    cidr_ips = {}
+    cidr_pending = {}
+    cidr_status = {}
+    cidr_printed = set()
+    cidr_asn_info = {}
+    results_lock = threading.Lock()
+
+    def print_cidr_result(cidr, status):
+        nonlocal completed
+        if cidr in cidr_printed:
+            return
+        cidr_printed.add(cidr)
+        
+        if status == "error":
+            if not silent_mode:
+                print(f"{cidr:<18} | {'Invalid':<12} | {'--':<25} | \033[91merror\033[0m")
+            with completed_lock:
+                completed += 1
+            return
+            
+        if check_asn:
+            asn, provider = get_asn_info(ipaddress.IPv4Network(cidr, strict=False))
+        else:
+            asn, provider = "--", "--"
+            
+        cidr_asn_info[cidr] = (asn, provider)
+        
+        if len(provider) > 22:
+            provider_disp = provider[:19] + "..."
+        else:
+            provider_disp = provider
+            
+        ping_status = "yes" if status == "yes" else "no"
+        ping_color = f"\033[92myes\033[0m" if status == "yes" else f"\033[91mno\033[0m"
+        
+        if not silent_mode:
+            print(f"{cidr:<18} | {asn:<12} | {provider_disp:<25} | {ping_color}")
+            
+        if status == "yes":
+            results.append([cidr, asn, provider, ping_status])
+            
+        with completed_lock:
+            completed += 1
+
     def progress_timer():
         while test_running:
             elapsed = time.time() - start_time
@@ -528,44 +620,46 @@ def main():
 
     try:
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_threads) as executor:
-            future_to_cidr = {}
+            futures = []
+            
             for cidr_str in tasks:
                 ips = get_ips_to_test(cidr_str, num_ips)
-                future = executor.submit(evaluate_cidr, cidr_str, ips, timeout, check_asn)
-                future_to_cidr[future] = cidr_str
-                
-            for future in concurrent.futures.as_completed(future_to_cidr):
-                cidr_str = future_to_cidr[future]
-                
-                with completed_lock:
-                    completed += 1
+                if ips is None or len(ips) == 0:
+                    with results_lock:
+                        cidr_status[cidr_str] = "error"
+                        cidr_pending[cidr_str] = 0
+                    print_cidr_result(cidr_str, "error")
+                    continue
                     
+                with results_lock:
+                    cidr_ips[cidr_str] = ips
+                    cidr_pending[cidr_str] = len(ips)
+                    cidr_status[cidr_str] = "checking"
+                    
+                for ip in ips:
+                    future = executor.submit(check_ip_task, ip, cidr_str, timeout, cidr_status, results_lock)
+                    futures.append(future)
+                    
+            for future in concurrent.futures.as_completed(futures):
                 try:
-                    res_cidr, asn, provider, is_reachable, status = future.result()
+                    ip, cidr, is_reachable, skipped = future.result()
                     
-                    if status == "error":
-                        if not silent_mode:
-                            print(f"{res_cidr:<18} | {'Invalid':<12} | {'--':<25} | \033[91merror\033[0m")
-                        continue
+                    with results_lock:
+                        if cidr in cidr_printed:
+                            cidr_pending[cidr] -= 1
+                            continue
+                            
+                        cidr_pending[cidr] -= 1
                         
-                    if len(provider) > 22:
-                        provider_disp = provider[:19] + "..."
-                    else:
-                        provider_disp = provider
-                        
-                    ping_status = "yes" if is_reachable else "no"
-                    ping_color = "\033[92myes\033[0m" if is_reachable else "\033[91mno\033[0m"
+                        if is_reachable:
+                            cidr_status[cidr] = "yes"
+                            print_cidr_result(cidr, "yes")
+                        elif cidr_pending[cidr] == 0:
+                            cidr_status[cidr] = "no"
+                            print_cidr_result(cidr, "no")
+                except Exception:
+                    pass
                     
-                    if not silent_mode:
-                        print(f"{res_cidr:<18} | {asn:<12} | {provider_disp:<25} | {ping_color}")
-                    
-                    if is_reachable:
-                        results.append([res_cidr, asn, provider, ping_status])
-                        
-                except Exception as exc:
-                    if not silent_mode:
-                        print(f"{cidr_str:<18} | {'Error':<12} | {'--':<25} | \033[91merror\033[0m")
-                        
         test_running = False
         if silent_mode:
             t_thread.join(timeout=1.0)
