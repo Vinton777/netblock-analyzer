@@ -31,19 +31,36 @@ fi
 echo "Установка NetBlock Analyzer и зависимостей..."
 
 # Проверка и установка зависимостей
-if [ "$IS_TERMUX" = "1" ]; then
-    echo "Обновление пакетов и установка зависимостей в Termux..."
-    pkg update -y
-    pkg install -y curl tar python inetutils whois
-else
-    echo "Проверка наличия пакетных менеджеров и установка зависимостей..."
-    if command -v apt >/dev/null 2>&1; then
-        apt update && apt install -y curl tar python3 iputils-ping whois
-    elif command -v yum >/dev/null 2>&1; then
-        yum install -y curl tar python3 iputils whois
-    else
-        echo "Внимание: Не удалось определить пакетный менеджер. Убедитесь, что curl, tar, python3, ping и whois установлены."
+DEP_MISSING=0
+for cmd in tar whois ping; do
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+        DEP_MISSING=1
+        break
     fi
+done
+
+# В Termux проверяем python3 отдельно
+if [ "$IS_TERMUX" = "1" ] && ! command -v python3 >/dev/null 2>&1 && ! command -v python >/dev/null 2>&1; then
+    DEP_MISSING=1
+fi
+
+if [ "$DEP_MISSING" -eq 1 ]; then
+    if [ "$IS_TERMUX" = "1" ]; then
+        echo "Обновление пакетов и установка зависимостей в Termux..."
+        pkg update -y || true
+        pkg install -y curl tar python inetutils whois libngtcp2 || true
+    else
+        echo "Проверка наличия пакетных менеджеров и установка зависимостей..."
+        if command -v apt >/dev/null 2>&1; then
+            apt update && apt install -y curl tar python3 iputils-ping whois
+        elif command -v yum >/dev/null 2>&1; then
+            yum install -y curl tar python3 iputils whois
+        else
+            echo "Внимание: Не удалось определить пакетный менеджер. Убедитесь, что curl, tar, python3, ping и whois установлены."
+        fi
+    fi
+else
+    echo "Все зависимости уже установлены, пропуск обновления пакетов."
 fi
 
 echo "Создание директории $INSTALL_DIR..."
@@ -51,7 +68,23 @@ rm -rf "$INSTALL_DIR"
 mkdir -p "$INSTALL_DIR"
 
 echo "Загрузка и распаковка файлов скрипта..."
-curl -fsSL "$TAR_URL" | tar -xz -C "$INSTALL_DIR" --strip-components=1
+if command -v curl >/dev/null 2>&1 && curl --version >/dev/null 2>&1; then
+    curl -fsSL "$TAR_URL" | tar -xz -C "$INSTALL_DIR" --strip-components=1
+else
+    echo "Предупреждение: curl поврежден или не работает. Скачиваем через Python..."
+    PYTHON_CMD="python3"
+    if ! command -v python3 >/dev/null 2>&1; then
+        if command -v python >/dev/null 2>&1; then
+            PYTHON_CMD="python"
+        else
+            echo "Ошибка: Python не найден. Установка невозможна."
+            exit 1
+        fi
+    fi
+    $PYTHON_CMD -c "import urllib.request; urllib.request.urlretrieve('$TAR_URL', 'archive.tar.gz')"
+    tar -xzf archive.tar.gz -C "$INSTALL_DIR" --strip-components=1
+    rm -f archive.tar.gz
+fi
 
 chmod +x "$INSTALL_DIR/netblock_analyzer.sh"
 

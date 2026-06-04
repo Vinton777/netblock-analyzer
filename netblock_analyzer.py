@@ -258,7 +258,7 @@ def get_downloads_folder():
     else:
         return os.path.join(os.path.expanduser("~"), "Downloads")
 
-VERSION = "2.0.4"
+VERSION = "2.0.5"
 
 def check_for_updates(auto_update):
     if not auto_update:
@@ -281,7 +281,20 @@ def check_for_updates(auto_update):
             v_local = [int(x) for x in VERSION.split('.')]
             if v_remote > v_local:
                 print(f"\n{COLOR_GREEN}[+] Автообновление до версии {remote_version}...{COLOR_RESET}")
-                os.system("curl -sSL https://raw.githubusercontent.com/Vinton777/network-cidr-test-ip/master/install.sh | bash")
+                try:
+                    import random
+                    inst_url = f"https://raw.githubusercontent.com/Vinton777/network-cidr-test-ip/master/install.sh?nocache={random.random()}"
+                    req_inst = urllib.request.Request(inst_url, headers={'User-Agent': 'Mozilla/5.0'})
+                    with urllib.request.urlopen(req_inst, timeout=10) as resp_inst:
+                        install_script = resp_inst.read().decode('utf-8')
+                    temp_path = "temp_install.sh"
+                    with open(temp_path, "w", encoding="utf-8") as f_inst:
+                        f_inst.write(install_script)
+                    os.system(f"bash {temp_path}")
+                    if os.path.exists(temp_path):
+                        os.remove(temp_path)
+                except Exception:
+                    os.system("curl -sSL https://raw.githubusercontent.com/Vinton777/network-cidr-test-ip/master/install.sh | bash")
                 print(f"{COLOR_GREEN}Готово. Пожалуйста, перезапустите скрипт.{COLOR_RESET}")
                 import sys
                 sys.exit(0)

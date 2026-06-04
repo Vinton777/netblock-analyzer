@@ -31,15 +31,28 @@ fi
 # Автообновление
 # Получаем локальную версию напрямую из Python-файла
 LOCAL_VERSION=$(grep -m 1 "VERSION =" "$PYTHON_SCRIPT" | cut -d '"' -f 2 || echo "0.0.0")
-# Добавляем ?nocache=$RANDOM для обхода кеша GitHub
-REMOTE_VERSION=$(curl -s "https://raw.githubusercontent.com/Vinton777/network-cidr-test-ip/master/netblock_analyzer.py?nocache=$RANDOM" | grep -m 1 "VERSION =" | cut -d '"' -f 2 || echo "0.0.0")
+
+# Проверка удаленной версии (с обходом кэша)
+if command -v curl >/dev/null 2>&1 && curl --version >/dev/null 2>&1; then
+    REMOTE_VERSION=$(curl -s "https://raw.githubusercontent.com/Vinton777/network-cidr-test-ip/master/netblock_analyzer.py?nocache=$RANDOM" | grep -m 1 "VERSION =" | cut -d '"' -f 2 || echo "0.0.0")
+else
+    # Резервный способ через Python, если curl не работает
+    REMOTE_VERSION=$(python3 -c "import urllib.request, re, random; req = urllib.request.Request('https://raw.githubusercontent.com/Vinton777/network-cidr-test-ip/master/netblock_analyzer.py?nocache=' + str(random.random()), headers={'User-Agent': 'Mozilla/5.0'}); html = urllib.request.urlopen(req, timeout=5).read().decode('utf-8'); m = re.search(r'VERSION = \"([^\"]+)\"', html); print(m.group(1) if m else '0.0.0')" 2>/dev/null || echo "0.0.0")
+fi
 
 if [ "$REMOTE_VERSION" != "0.0.0" ] && [ "$LOCAL_VERSION" != "$REMOTE_VERSION" ]; then
     # Сравниваем версии корректно (1.8.2 > 1.8.1). Обновляем только если REMOTE > LOCAL
     if [ "$(printf '%s\n' "$LOCAL_VERSION" "$REMOTE_VERSION" | sort -V | head -n1)" = "$LOCAL_VERSION" ]; then
         echo -e "\033[33m[!] Найдена новая версия: $REMOTE_VERSION (Текущая: $LOCAL_VERSION)\033[0m"
         echo -e "\033[32m[+] Запуск авто-обновления...\033[0m"
-        curl -sSL "https://raw.githubusercontent.com/Vinton777/network-cidr-test-ip/master/install.sh?nocache=$RANDOM" | bash
+        if command -v curl >/dev/null 2>&1 && curl --version >/dev/null 2>&1; then
+            curl -sSL "https://raw.githubusercontent.com/Vinton777/network-cidr-test-ip/master/install.sh?nocache=$RANDOM" | bash
+        else
+            echo "Попытка автообновления через Python..."
+            python3 -c "import urllib.request, random; urllib.request.urlretrieve('https://raw.githubusercontent.com/Vinton777/network-cidr-test-ip/master/install.sh?nocache=' + str(random.random()), 'temp_install.sh')"
+            bash temp_install.sh
+            rm -f temp_install.sh
+        fi
         exit 0
     fi
 fi
