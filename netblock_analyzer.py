@@ -67,7 +67,7 @@ def get_yes_no_input(prompt, default):
             return False
         print(f"{COLOR_RED}Пожалуйста, введите 'y' или 'n'.{COLOR_RESET}")
 
-def check_host(ip, timeout):
+def check_host(ip, timeout, cidr=None, cidr_status=None, parent_results_lock=None):
     results = {"icmp": False, 22: False, 80: False, 443: False}
     results_lock = threading.Lock()
     
@@ -112,9 +112,28 @@ def check_host(ip, timeout):
     t_icmp.start()
     threads.append(t_icmp)
     
-    # Ждём завершения всех проверок для получения полного профиля ответов
+    # Ждём завершения всех проверок, но с оптимизацией:
+    # если хотя бы одна проверка успешна, мы досрочно помечаем CIDR как доступный 
+    # и даём другим портам короткий льготный период (200 мс) на ответ, чтобы не ждать весь таймаут
     start_t = time.time()
+    first_success_t = None
+    
     while time.time() - start_t < timeout + 0.2:
+        with results_lock:
+            any_success = any(results.values())
+            
+        if any_success:
+            if first_success_t is None:
+                first_success_t = time.time()
+                # Немедленно помечаем CIDR как активный во внешнем словаре для шорт-сиркьюта других потоков
+                if cidr and cidr_status and parent_results_lock:
+                    with parent_results_lock:
+                        cidr_status[cidr] = "yes"
+            
+            # Если с момента первого успеха прошло 200 мс — прерываем ожидание
+            if time.time() - first_success_t > 0.2:
+                break
+                
         if not any(t.is_alive() for t in threads):
             break
         time.sleep(0.02)
@@ -127,7 +146,7 @@ def check_ip_task(ip, cidr, timeout, cidr_status, results_lock):
         if cidr_status.get(cidr) == "yes":
             return ip, cidr, False, {}, True  # Пропускаем, так как CIDR уже доступен
             
-    port_results = check_host(ip, timeout)
+    port_results = check_host(ip, timeout, cidr, cidr_status, results_lock)
     is_reachable = any(port_results.values())
     return ip, cidr, is_reachable, port_results, False
 
@@ -256,7 +275,7 @@ def get_downloads_folder():
     else:
         return os.path.join(os.path.expanduser("~"), "Downloads")
 
-VERSION = "2.1.0"
+VERSION = "2.1.1"
 
 def check_for_updates(auto_update):
     if not auto_update:
