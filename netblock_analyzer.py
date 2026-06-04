@@ -68,8 +68,8 @@ def get_yes_no_input(prompt, default):
         print(f"{COLOR_RED}Пожалуйста, введите 'y' или 'n'.{COLOR_RESET}")
 
 def check_host(ip, timeout):
-    result = [False]
-    result_lock = threading.Lock()
+    results = {"icmp": False, 22: False, 80: False, 443: False}
+    results_lock = threading.Lock()
     
     # TCP-подключения к портам 80, 22, 443
     def check_tcp(port):
@@ -79,8 +79,8 @@ def check_host(ip, timeout):
             res = s.connect_ex((str(ip), port))
             # 0 — порт открыт. ECONNREFUSED/WSAECONNREFUSED — порт закрыт, но узел жив
             if res == 0 or res in (111, 10061):
-                with result_lock:
-                    result[0] = True
+                with results_lock:
+                    results[port] = True
         except Exception:
             pass
         finally:
@@ -95,8 +95,8 @@ def check_host(ip, timeout):
         try:
             res = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             if res.returncode == 0:
-                with result_lock:
-                    result[0] = True
+                with results_lock:
+                    results["icmp"] = True
         except Exception:
             pass
 
@@ -112,26 +112,24 @@ def check_host(ip, timeout):
     t_icmp.start()
     threads.append(t_icmp)
     
-    # Ждём завершения или первого успешного ответа
+    # Ждём завершения всех проверок для получения полного профиля ответов
     start_t = time.time()
     while time.time() - start_t < timeout + 0.2:
-        with result_lock:
-            if result[0]:
-                return True
         if not any(t.is_alive() for t in threads):
             break
         time.sleep(0.02)
         
-    with result_lock:
-        return result[0]
+    with results_lock:
+        return results
 
 def check_ip_task(ip, cidr, timeout, cidr_status, results_lock):
     with results_lock:
         if cidr_status.get(cidr) == "yes":
-            return ip, cidr, False, True  # Пропускаем, так как CIDR уже доступен
+            return ip, cidr, False, {}, True  # Пропускаем, так как CIDR уже доступен
             
-    is_reachable = check_host(ip, timeout)
-    return ip, cidr, is_reachable, False
+    port_results = check_host(ip, timeout)
+    is_reachable = any(port_results.values())
+    return ip, cidr, is_reachable, port_results, False
 
 asn_cache = {}
 whois_lock = threading.Lock()
@@ -258,7 +256,7 @@ def get_downloads_folder():
     else:
         return os.path.join(os.path.expanduser("~"), "Downloads")
 
-VERSION = "2.0.9"
+VERSION = "2.1.0"
 
 def check_for_updates(auto_update):
     if not auto_update:
@@ -563,8 +561,38 @@ def main():
         print(f"Ошибка чтения {filename}: {e}")
         sys.exit(1)
 
+    def format_status(val, width):
+        status_str = "yes" if val else "no"
+        padded = f"{status_str:<{width}}"
+        if val:
+            return f"\033[92m{padded}\033[0m"
+        else:
+            return f"\033[91m{padded}\033[0m"
+
+    def get_row_string(cidr, asn, provider, port_res, is_header=False):
+        if is_header:
+            if check_asn:
+                return f"{cidr:<18} | {asn:<12} | {provider:<25} | {port_res['icmp']:<6} | {port_res[22]:<4} | {port_res[80]:<4} | {port_res[443]:<5}"
+            else:
+                return f"{cidr:<18} | {port_res['icmp']:<6} | {port_res[22]:<4} | {port_res[80]:<4} | {port_res[443]:<5}"
+        else:
+            icmp_disp = format_status(port_res.get('icmp', False), 6)
+            p22_disp = format_status(port_res.get(22, False), 4)
+            p80_disp = format_status(port_res.get(80, False), 4)
+            p443_disp = format_status(port_res.get(443, False), 5)
+            
+            if check_asn:
+                if len(provider) > 22:
+                    provider_disp = provider[:19] + "..."
+                else:
+                    provider_disp = provider
+                return f"{cidr:<18} | {asn:<12} | {provider_disp:<25} | {icmp_disp} | {p22_disp} | {p80_disp} | {p443_disp}"
+            else:
+                return f"{cidr:<18} | {icmp_disp} | {p22_disp} | {p80_disp} | {p443_disp}"
+
     if not silent_mode:
-        print(f"\n{COLOR_GREEN}{'CIDR/IP':<18} | {'ASN':<12} | {'Provider':<25} | {'PING'}{COLOR_RESET}")
+        header_ports = {'icmp': 'ICMP', 22: '22', 80: '80', 443: '443'}
+        print("\n" + COLOR_GREEN + get_row_string('CIDR/IP', 'ASN', 'Provider', header_ports, is_header=True) + COLOR_RESET)
     else:
         print(f"\n{COLOR_GREEN}[+] Тихий режим. Тестирование ({len(tasks)} записей)...{COLOR_RESET}")
 
@@ -578,6 +606,7 @@ def main():
     cidr_ips = {}
     cidr_pending = {}
     cidr_status = {}
+    cidr_port_results = {}
     cidr_printed = set()
     cidr_asn_info = {}
     results_lock = threading.Lock()
@@ -590,7 +619,10 @@ def main():
         
         if status == "error":
             if not silent_mode:
-                print(f"{cidr:<18} | {'Invalid':<12} | {'--':<25} | \033[91merror\033[0m")
+                if check_asn:
+                    print(f"{cidr:<18} | {'Invalid':<12} | {'--':<25} | \033[91merror\033[0m")
+                else:
+                    print(f"{cidr:<18} | \033[91merror\033[0m")
             with completed_lock:
                 completed += 1
             return
@@ -602,19 +634,21 @@ def main():
             
         cidr_asn_info[cidr] = (asn, provider)
         
-        if len(provider) > 22:
-            provider_disp = provider[:19] + "..."
-        else:
-            provider_disp = provider
-            
-        ping_status = "yes" if status == "yes" else "no"
-        ping_color = f"\033[92myes\033[0m" if status == "yes" else f"\033[91mno\033[0m"
+        port_res = cidr_port_results.get(cidr, {"icmp": False, 22: False, 80: False, 443: False})
         
         if not silent_mode:
-            print(f"{cidr:<18} | {asn:<12} | {provider_disp:<25} | {ping_color}")
+            print(get_row_string(cidr, asn, provider, port_res))
             
         if status == "yes":
-            results.append([cidr, asn, provider, ping_status])
+            # Собираем текстовый список успешных портов
+            ports_csv = []
+            if port_res['icmp']: ports_csv.append("ICMP")
+            if port_res[22]: ports_csv.append("22")
+            if port_res[80]: ports_csv.append("80")
+            if port_res[443]: ports_csv.append("443")
+            ports_str = ",".join(ports_csv)
+            # Запись: [cidr, asn, provider, yes/no, ports_str, icmp, p22, p80, p443]
+            results.append([cidr, asn, provider, "yes", ports_str, port_res['icmp'], port_res[22], port_res[80], port_res[443]])
             
         with completed_lock:
             completed += 1
@@ -650,6 +684,7 @@ def main():
                     cidr_ips[cidr_str] = ips
                     cidr_pending[cidr_str] = len(ips)
                     cidr_status[cidr_str] = "checking"
+                    cidr_port_results[cidr_str] = {"icmp": False, 22: False, 80: False, 443: False}
                     
                 for ip in ips:
                     future = executor.submit(check_ip_task, ip, cidr_str, timeout, cidr_status, results_lock)
@@ -657,7 +692,7 @@ def main():
                     
             for future in concurrent.futures.as_completed(futures):
                 try:
-                    ip, cidr, is_reachable, skipped = future.result()
+                    ip, cidr, is_reachable, port_results, skipped = future.result()
                     
                     with results_lock:
                         if cidr in cidr_printed:
@@ -665,6 +700,12 @@ def main():
                             continue
                             
                         cidr_pending[cidr] -= 1
+                        
+                        # Объединяем результаты портов для этого CIDR
+                        if not skipped and is_reachable:
+                            for k, v in port_results.items():
+                                if v:
+                                    cidr_port_results[cidr][k] = True
                         
                         if is_reachable:
                             cidr_status[cidr] = "yes"
@@ -691,9 +732,12 @@ def main():
 
     if results:
         print(f"\n{COLOR_GREEN}==== Итоговый список успешных (PING = yes) ===={COLOR_RESET}")
-        print(f"{COLOR_GREEN}{'CIDR/IP':<18} | {'ASN':<12} | {'Provider':<25}{COLOR_RESET}")
+        header_ports = {'icmp': 'ICMP', 22: '22', 80: '80', 443: '443'}
+        print(COLOR_GREEN + get_row_string('CIDR/IP', 'ASN', 'Provider', header_ports, is_header=True) + COLOR_RESET)
         for row in results:
-            print(f"\033[92m{row[0]:<18}\033[0m | {row[1]:<12} | {row[2]:<25}")
+            cidr, asn, provider = row[0], row[1], row[2]
+            port_res = {'icmp': row[5], 22: row[6], 80: row[7], 443: row[8]}
+            print(get_row_string(cidr, asn, provider, port_res))
         print(f"{COLOR_GREEN}==============================================={COLOR_RESET}")
 
     # Сохранение результатов
@@ -701,8 +745,16 @@ def main():
         try:
             with open(results_file, "w", newline='', encoding="utf-8") as cf:
                 writer = csv.writer(cf)
-                writer.writerow(["CIDR_OR_IP", "ASN", "PROVIDER", "PING"])
-                writer.writerows(results)
+                if check_asn:
+                    writer.writerow(["CIDR_OR_IP", "ASN", "PROVIDER", "PING", "PORTS", "ICMP", "PORT_22", "PORT_80", "PORT_443"])
+                else:
+                    writer.writerow(["CIDR_OR_IP", "PING", "PORTS", "ICMP", "PORT_22", "PORT_80", "PORT_443"])
+                    
+                for row in results:
+                    if check_asn:
+                        writer.writerow([row[0], row[1], row[2], "yes", row[4], "yes" if row[5] else "no", "yes" if row[6] else "no", "yes" if row[7] else "no", "yes" if row[8] else "no"])
+                    else:
+                        writer.writerow([row[0], "yes", row[4], "yes" if row[5] else "no", "yes" if row[6] else "no", "yes" if row[7] else "no", "yes" if row[8] else "no"])
             print(f"\n{COLOR_GREEN}[+] Результаты успешно сохранены в {results_file}{COLOR_RESET}")
         except Exception as e:
             print(f"\n{COLOR_RED}[-] Ошибка при сохранении результатов: {e}{COLOR_RESET}")
