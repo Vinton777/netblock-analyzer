@@ -3,7 +3,7 @@ set -e
 
 # Переходим в безопасную директорию, чтобы избежать ошибок getcwd, 
 # если скрипт запущен из папки, которая будет удалена
-cd /tmp || true
+cd "$HOME" || cd ~ || cd /tmp || true
 
 # Этап 1: Определение URL репозитория
 # Замените USERNAME и REPO_NAME на ваши данные после публикации на GitHub
@@ -81,7 +81,7 @@ else
             exit 1
         fi
     fi
-    TMP_ARCHIVE="${TMPDIR:-/tmp}/archive.tar.gz"
+    TMP_ARCHIVE="archive.tar.gz"
     $PYTHON_CMD -c "import urllib.request; req = urllib.request.Request('$TAR_URL', headers={'User-Agent': 'Mozilla/5.0'}); open('$TMP_ARCHIVE', 'wb').write(urllib.request.urlopen(req).read())"
     tar -xzf "$TMP_ARCHIVE" -C "$INSTALL_DIR" --strip-components=1
     rm -f "$TMP_ARCHIVE"
