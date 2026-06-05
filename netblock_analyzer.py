@@ -216,7 +216,7 @@ def get_asn_info(cidr_obj):
     asn_cache[target] = (asn, provider)
     return asn, provider
 
-def get_ips_to_test(cidr_str, num_ips):
+def get_ips_to_test(cidr_str, num_ips, ping_all_by_prefix=False, ping_all_threshold=24):
     try:
         network = ipaddress.IPv4Network(cidr_str, strict=False)
     except Exception:
@@ -228,6 +228,11 @@ def get_ips_to_test(cidr_str, num_ips):
         return [network.network_address + i for i in range(total_ips)]
         
     usable_ips_count = total_ips - 2 if total_ips > 2 else total_ips
+    
+    # Если включен пинг всех IP по префиксу, и маска сети >= порогового значения (например, 24)
+    if ping_all_by_prefix and network.prefixlen >= ping_all_threshold:
+        return list(network.hosts())
+        
     if num_ips >= usable_ips_count:
         return list(network.hosts())
         
@@ -283,7 +288,7 @@ def get_downloads_folder():
     else:
         return os.path.join(os.path.expanduser("~"), "Downloads")
 
-VERSION = "2.1.3"
+VERSION = "2.1.4"
 
 def check_for_updates(auto_update):
     if not auto_update:
@@ -385,6 +390,8 @@ def main():
     selected_option_key = '1'
     silent_mode = False
     auto_update = False
+    ping_all_by_prefix = False
+    ping_all_threshold = 24
 
     if os.path.exists(config_path):
         import json
@@ -399,6 +406,8 @@ def main():
                 selected_option_key = str(cfg.get("selected_option_key", selected_option_key))
                 silent_mode = cfg.get("silent_mode", silent_mode)
                 auto_update = cfg.get("auto_update", auto_update)
+                ping_all_by_prefix = cfg.get("ping_all_by_prefix", ping_all_by_prefix)
+                ping_all_threshold = cfg.get("ping_all_threshold", ping_all_threshold)
         except Exception:
             pass
 
@@ -461,8 +470,7 @@ def main():
             sure = get_yes_no_input("Вы уверены, что хотите изменить параметры? (y/n)", "n")
             if sure:
                 print(f"\n{COLOR_GREEN}Настройки проверки сети{COLOR_RESET}\n")
-                if mode == 1:
-                    num_ips = get_int_input("Сколько IP проверять для каждого CIDR?", num_ips)
+                num_ips = get_int_input("Сколько IP проверять для каждого CIDR?", num_ips)
                 timeout = get_int_input("Timeout для ping в секундах?", timeout)
                 max_threads = get_int_input("Сколько потоков использовать?", max_threads)
                 
@@ -471,6 +479,30 @@ def main():
                 
                 save_res_def = "y" if save_res else "n"
                 save_res = get_yes_no_input(f"Сохранять результаты? (y/n)", save_res_def)
+
+                ping_all_by_prefix_def = "y" if ping_all_by_prefix else "n"
+                ping_all_by_prefix = get_yes_no_input("Пинговать все IP для малых подсетей по маске? (y/n)", ping_all_by_prefix_def)
+                if ping_all_by_prefix:
+                    ping_all_threshold = get_int_input("Пороговая маска подсети (например, 24 для /24 и меньше)?", ping_all_threshold)
+
+                # Сразу сохраним настройки
+                import json
+                try:
+                    with open(config_path, "w", encoding="utf-8") as f:
+                        json.dump({
+                            "num_ips": num_ips,
+                            "timeout": timeout,
+                            "max_threads": max_threads,
+                            "check_asn": check_asn,
+                            "save_res": save_res,
+                            "selected_option_key": selected_option_key,
+                            "silent_mode": silent_mode,
+                            "auto_update": auto_update,
+                            "ping_all_by_prefix": ping_all_by_prefix,
+                            "ping_all_threshold": ping_all_threshold
+                        }, f)
+                except Exception:
+                    pass
         elif main_choice == '3':
             while True:
                 clear_screen()
@@ -507,7 +539,9 @@ def main():
                         "save_res": save_res,
                         "selected_option_key": selected_option_key,
                         "silent_mode": silent_mode,
-                        "auto_update": auto_update
+                        "auto_update": auto_update,
+                        "ping_all_by_prefix": ping_all_by_prefix,
+                        "ping_all_threshold": ping_all_threshold
                     }, f)
             except Exception:
                 pass
@@ -540,7 +574,9 @@ def main():
                         "save_res": save_res,
                         "selected_option_key": selected_option_key,
                         "silent_mode": silent_mode,
-                        "auto_update": auto_update
+                        "auto_update": auto_update,
+                        "ping_all_by_prefix": ping_all_by_prefix,
+                        "ping_all_threshold": ping_all_threshold
                     }, f)
             except Exception:
                 pass
@@ -699,7 +735,7 @@ def main():
             futures = []
             
             for cidr_str in tasks:
-                ips = get_ips_to_test(cidr_str, num_ips)
+                ips = get_ips_to_test(cidr_str, num_ips, ping_all_by_prefix, ping_all_threshold)
                 if ips is None or len(ips) == 0:
                     with results_lock:
                         cidr_status[cidr_str] = "error"
