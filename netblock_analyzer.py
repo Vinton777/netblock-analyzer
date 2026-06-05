@@ -119,7 +119,7 @@ def check_host(ip, timeout, cidr=None, cidr_status=None, parent_results_lock=Non
     threads.append(t_icmp)
     
     # Ждём завершения всех проверок, но с оптимизацией:
-    # если хост жив (host_alive[0] == True), мы досрочно помечаем CIDR как доступный 
+    # если хост имеет хотя бы один открытый порт/ответил на ICMP (any_open == True), мы досрочно помечаем CIDR как доступный 
     # и даём другим портам короткий льготный период (300 мс) на ответ, чтобы не ждать весь таймаут
     start_t = time.time()
     first_success_t = None
@@ -129,7 +129,7 @@ def check_host(ip, timeout, cidr=None, cidr_status=None, parent_results_lock=Non
             alive = host_alive[0]
             any_open = any(open_ports.values())
             
-        if alive:
+        if any_open:
             if first_success_t is None:
                 first_success_t = time.time()
                 # Немедленно помечаем CIDR как активный во внешнем словаре для шорт-сиркьюта других потоков
@@ -137,12 +137,9 @@ def check_host(ip, timeout, cidr=None, cidr_status=None, parent_results_lock=Non
                     with parent_results_lock:
                         cidr_status[cidr] = "yes"
             
-            # Если хотя бы один порт открыт или получен ответ по ICMP, даем льготный период 300 мс на остальные.
-            # Если порты закрыты (был ECONNREFUSED), мы не запускаем преждевременный выход,
-            # пока не дождемся завершения ICMP, чтобы избежать ложного no на пинге из-за задержек запуска ping.exe.
-            if any_open:
-                if time.time() - first_success_t > 0.3:
-                    break
+            # Даем льготный период 300 мс на остальные порты
+            if time.time() - first_success_t > 0.3:
+                break
                 
         if not any(t.is_alive() for t in threads):
             break
@@ -156,7 +153,8 @@ def check_ip_task(ip, cidr, timeout, cidr_status, results_lock):
         if cidr_status.get(cidr) == "yes":
             return ip, cidr, False, {}, True  # Пропускаем, так как CIDR уже доступен
             
-    is_reachable, port_results = check_host(ip, timeout, cidr, cidr_status, results_lock)
+    is_alive, port_results = check_host(ip, timeout, cidr, cidr_status, results_lock)
+    is_reachable = any(port_results.values())  # CIDR успешен только если хотя бы один порт/ICMP открыт
     return ip, cidr, is_reachable, port_results, False
 
 asn_cache = {}
@@ -285,7 +283,7 @@ def get_downloads_folder():
     else:
         return os.path.join(os.path.expanduser("~"), "Downloads")
 
-VERSION = "2.1.2"
+VERSION = "2.1.3"
 
 def check_for_updates(auto_update):
     if not auto_update:
