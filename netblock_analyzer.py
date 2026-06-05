@@ -288,7 +288,7 @@ def get_downloads_folder():
     else:
         return os.path.join(os.path.expanduser("~"), "Downloads")
 
-VERSION = "2.1.4"
+VERSION = "2.2.0"
 
 def check_for_updates(auto_update):
     if not auto_update:
