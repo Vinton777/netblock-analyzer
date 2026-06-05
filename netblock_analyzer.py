@@ -296,7 +296,7 @@ def check_for_updates(auto_update):
         
     import urllib.request
     import urllib.error
-    url = "https://raw.githubusercontent.com/Vinton777/network-cidr-test-ip/master/netblock_analyzer.py"
+    url = "https://raw.githubusercontent.com/Vinton777/netblock-analyzer/master/netblock_analyzer.py"
     try:
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req, timeout=5) as response:
@@ -314,7 +314,7 @@ def check_for_updates(auto_update):
                 try:
                     import random
                     import tempfile
-                    inst_url = f"https://raw.githubusercontent.com/Vinton777/network-cidr-test-ip/master/install.sh?nocache={random.random()}"
+                    inst_url = f"https://raw.githubusercontent.com/Vinton777/netblock-analyzer/master/install.sh?nocache={random.random()}"
                     req_inst = urllib.request.Request(inst_url, headers={'User-Agent': 'Mozilla/5.0'})
                     with urllib.request.urlopen(req_inst, timeout=10) as resp_inst:
                         install_script = resp_inst.read().decode('utf-8')
@@ -326,7 +326,7 @@ def check_for_updates(auto_update):
                     if os.path.exists(temp_path):
                         os.remove(temp_path)
                 except Exception:
-                    os.system("curl -sSL https://raw.githubusercontent.com/Vinton777/network-cidr-test-ip/master/install.sh | bash")
+                    os.system("curl -sSL https://raw.githubusercontent.com/Vinton777/netblock-analyzer/master/install.sh | bash")
                 print(f"{COLOR_GREEN}Готово. Пожалуйста, перезапустите скрипт.{COLOR_RESET}")
                 import sys
                 sys.exit(0)

@@ -25,12 +25,12 @@
 
 Выполните следующую команду в терминале (подходит как для Linux, так и для Termux на Android):
 ```bash
-curl -sSL https://raw.githubusercontent.com/Vinton777/network-cidr-test-ip/master/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/Vinton777/netblock-analyzer/master/install.sh | bash
 ```
 
 Если утилита `curl` в вашей системе отсутствует или повреждена (например, из-за конфликта зависимостей библиотек в Termux), используйте для установки команду через **Python**:
 ```bash
-python3 -c "import urllib.request, random; req = urllib.request.Request('https://raw.githubusercontent.com/Vinton777/network-cidr-test-ip/master/install.sh?nocache=' + str(random.random()), headers={'User-Agent': 'Mozilla/5.0'}); open('install.sh', 'wb').write(urllib.request.urlopen(req).read())" && bash install.sh && rm install.sh
+python3 -c "import urllib.request, random; req = urllib.request.Request('https://raw.githubusercontent.com/Vinton777/netblock-analyzer/master/install.sh?nocache=' + str(random.random()), headers={'User-Agent': 'Mozilla/5.0'}); open('install.sh', 'wb').write(urllib.request.urlopen(req).read())" && bash install.sh && rm install.sh
 ```
 
 > **Примечание для Linux:** Скрипт устанавливается в `/opt/` и `/usr/local/bin/`. Если вы обычный пользователь (не root), скрипт попросит вас запустить его с правами суперпользователя: `curl ... | sudo bash` (или запустить аналогично через `sudo python3 ...`)

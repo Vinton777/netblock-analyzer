@@ -15,7 +15,7 @@ check_cmd tar || MISSING+=("tar")
 if [ ${#MISSING[@]} -gt 0 ]; then
     echo "Отсутствуют необходимые зависимости: ${MISSING[*]}"
     echo "Пожалуйста, запустите установочный скрипт для их инсталляции:"
-    echo "curl -sSL https://raw.githubusercontent.com/Vinton777/network-cidr-test-ip/master/install.sh | bash"
+    echo "curl -sSL https://raw.githubusercontent.com/Vinton777/netblock-analyzer/master/install.sh | bash"
     exit 1
 fi
 
@@ -34,10 +34,10 @@ LOCAL_VERSION=$(grep -m 1 "VERSION =" "$PYTHON_SCRIPT" | cut -d '"' -f 2 || echo
 
 # Проверка удаленной версии (с обходом кэша)
 if command -v curl >/dev/null 2>&1 && curl --version >/dev/null 2>&1; then
-    REMOTE_VERSION=$(curl -s "https://raw.githubusercontent.com/Vinton777/network-cidr-test-ip/master/netblock_analyzer.py?nocache=$RANDOM" | grep -m 1 "VERSION =" | cut -d '"' -f 2 || echo "0.0.0")
+    REMOTE_VERSION=$(curl -s "https://raw.githubusercontent.com/Vinton777/netblock-analyzer/master/netblock_analyzer.py?nocache=$RANDOM" | grep -m 1 "VERSION =" | cut -d '"' -f 2 || echo "0.0.0")
 else
     # Резервный способ через Python, если curl не работает
-    REMOTE_VERSION=$(python3 -c "import urllib.request, re, random; req = urllib.request.Request('https://raw.githubusercontent.com/Vinton777/network-cidr-test-ip/master/netblock_analyzer.py?nocache=' + str(random.random()), headers={'User-Agent': 'Mozilla/5.0'}); html = urllib.request.urlopen(req, timeout=5).read().decode('utf-8'); m = re.search(r'VERSION = \"([^\"]+)\"', html); print(m.group(1) if m else '0.0.0')" 2>/dev/null || echo "0.0.0")
+    REMOTE_VERSION=$(python3 -c "import urllib.request, re, random; req = urllib.request.Request('https://raw.githubusercontent.com/Vinton777/netblock-analyzer/master/netblock_analyzer.py?nocache=' + str(random.random()), headers={'User-Agent': 'Mozilla/5.0'}); html = urllib.request.urlopen(req, timeout=5).read().decode('utf-8'); m = re.search(r'VERSION = \"([^\"]+)\"', html); print(m.group(1) if m else '0.0.0')" 2>/dev/null || echo "0.0.0")
 fi
 
 if [ "$REMOTE_VERSION" != "0.0.0" ] && [ "$LOCAL_VERSION" != "$REMOTE_VERSION" ]; then
@@ -46,10 +46,10 @@ if [ "$REMOTE_VERSION" != "0.0.0" ] && [ "$LOCAL_VERSION" != "$REMOTE_VERSION" ]
         echo -e "\033[33m[!] Найдена новая версия: $REMOTE_VERSION (Текущая: $LOCAL_VERSION)\033[0m"
         echo -e "\033[32m[+] Запуск авто-обновления...\033[0m"
         if command -v curl >/dev/null 2>&1 && curl --version >/dev/null 2>&1; then
-            curl -sSL "https://raw.githubusercontent.com/Vinton777/network-cidr-test-ip/master/install.sh?nocache=$RANDOM" | bash
+            curl -sSL "https://raw.githubusercontent.com/Vinton777/netblock-analyzer/master/install.sh?nocache=$RANDOM" | bash
         else
             TMP_INSTALL="${TMPDIR:-/tmp}/temp_install.sh"
-            python3 -c "import urllib.request, random; req = urllib.request.Request('https://raw.githubusercontent.com/Vinton777/network-cidr-test-ip/master/install.sh?nocache=' + str(random.random()), headers={'User-Agent': 'Mozilla/5.0'}); r = urllib.request.urlopen(req); open('$TMP_INSTALL', 'w', encoding='utf-8').write(r.read().decode('utf-8'))"
+            python3 -c "import urllib.request, random; req = urllib.request.Request('https://raw.githubusercontent.com/Vinton777/netblock-analyzer/master/install.sh?nocache=' + str(random.random()), headers={'User-Agent': 'Mozilla/5.0'}); r = urllib.request.urlopen(req); open('$TMP_INSTALL', 'w', encoding='utf-8').write(r.read().decode('utf-8'))"
             bash "$TMP_INSTALL"
             rm -f "$TMP_INSTALL"
         fi

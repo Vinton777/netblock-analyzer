@@ -8,7 +8,7 @@ cd "$HOME" || cd ~ || cd /tmp || true
 # Этап 1: Определение URL репозитория
 # Замените USERNAME и REPO_NAME на ваши данные после публикации на GitHub
 USERNAME="Vinton777"
-REPO_NAME="network-cidr-test-ip"
+REPO_NAME="netblock-analyzer"
 BRANCH="master"
 TAR_URL="https://github.com/$USERNAME/$REPO_NAME/archive/refs/heads/$BRANCH.tar.gz"
 
